@@ -1,0 +1,94 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flashalpha-historical"
+version = "0.1.0"
+description = "Python SDK for the FlashAlpha Historical API — point-in-time replay of GEX, gamma flip, VRP, narrative, max pain, and the full stock summary at any minute back to 2018-04-16. Backtest options strategies against 6.7B+ option rows."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "FlashAlpha", email = "tom@flashalpha.com" }]
+keywords = [
+    "options",
+    "options backtest",
+    "options backtesting",
+    "historical options",
+    "historical options data",
+    "gamma exposure",
+    "gex",
+    "GEX history",
+    "options replay",
+    "point-in-time",
+    "as of",
+    "options analytics",
+    "options API",
+    "delta exposure",
+    "vanna",
+    "charm",
+    "implied volatility",
+    "0dte",
+    "zero dte",
+    "volatility surface",
+    "dealer positioning",
+    "max pain",
+    "VRP",
+    "variance risk premium",
+    "SVI",
+    "variance swap",
+    "quantitative finance",
+    "trading",
+    "finance",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = ["requests>=2.28"]
+
+[project.urls]
+Homepage = "https://historical.flashalpha.com"
+Documentation = "https://flashalpha.com/docs/historical"
+Repository = "https://github.com/FlashAlpha-lab/flashalpha-historical-python"
+Issues = "https://github.com/FlashAlpha-lab/flashalpha-historical-python/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov", "responses>=0.23"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flashalpha_historical"]
+
+[tool.hatch.build.targets.sdist]
+support-legacy = false
+include = [
+  "/src/flashalpha_historical",
+  "/README.md",
+  "/LICENSE",
+  "/pyproject.toml",
+]
+exclude = [
+  ".claude",
+  "CLAUDE.md",
+  ".env",
+  ".env.*",
+  ".gitignore",
+  "**/.gitignore",
+  ".vscode",
+  ".idea",
+  "*.local",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: hits the live FlashAlpha Historical API (deselect with -m 'not integration')"]
