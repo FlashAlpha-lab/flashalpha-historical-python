@@ -48,6 +48,15 @@ from .types import (
     ExposureSummaryInterpretation,
     ExposureSummaryResponse,
     ExposureSummaryZeroDte,
+    VrpCore,
+    VrpDirectional,
+    VrpGexConditioned,
+    VrpMacro,
+    VrpRegime,
+    VrpResponse,
+    VrpStrategyScores,
+    VrpTermItem,
+    VrpVannaConditioned,
 )
 
 __version__ = "0.4.0rc1"
@@ -79,4 +88,14 @@ __all__ = [
     "ExposureSummaryHedgingEstimate",
     "ExposureSummaryHedgingMove",
     "ExposureSummaryZeroDte",
+    # ── VRP ──
+    "VrpResponse",
+    "VrpCore",
+    "VrpDirectional",
+    "VrpTermItem",
+    "VrpGexConditioned",
+    "VrpVannaConditioned",
+    "VrpRegime",
+    "VrpStrategyScores",
+    "VrpMacro",
 ]
