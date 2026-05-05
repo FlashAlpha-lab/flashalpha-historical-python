@@ -45,7 +45,9 @@ SPY_DATE = "2024-08-05"
 EXPECTED_SPOT = 516.435  # checked from probe; minute-stable
 SPOT_TOL = 1.0  # tolerate minor minute-bar refits
 
-REGIMES = {"positive_gamma", "negative_gamma", "transition"}
+REGIMES = {"positive_gamma", "negative_gamma", "neutral", "undetermined"}
+# Both /v1/exposure/summary and /v1/exposure/zero-dte return lowercase.
+# (summary and zero-dte both return lowercase buy/sell directions.)
 HEDGING_DIRECTIONS = {"buy", "sell"}
 
 
@@ -129,23 +131,44 @@ class TestMarketData:
 
 class TestExposure:
     def test_summary_shape_and_invariants(self, hx):
+        """Every field declared in ExposureSummaryResponse must be referenced."""
         s = hx.exposure_summary("SPY", at=SPY_AT)
+        # ── top-level scalars ──
+        # Note: /v1/exposure/summary does NOT include `as_of_requested`
+        # (gex/dex/narrative do, but summary doesn't — quirk of the API).
         assert s["symbol"] == "SPY"
         assert abs(s["underlying_price"] - EXPECTED_SPOT) < SPOT_TOL
+        assert isinstance(s["as_of"], str) and s["as_of"]
+        assert s["as_of"] == SPY_AT  # snapped to the requested minute
         assert s["regime"] in REGIMES
         assert isinstance(s["gamma_flip"], (int, float))
+        # ── exposures block (4 fields) ──
         e = s["exposures"]
         for k in ("net_gex", "net_dex", "net_vex", "net_chex"):
-            assert isinstance(e[k], (int, float))
-        # Hedging estimate should be symmetric around current spot
+            assert isinstance(e[k], (int, float)), f"exposures.{k}"
+        # ── interpretation block (3 fields) ──
+        interp = s["interpretation"]
+        for k in ("gamma", "vanna", "charm"):
+            assert isinstance(interp[k], str) and interp[k], f"interpretation.{k}"
+        # ── hedging_estimate block: every leaf field on both sides ──
         h = s["hedging_estimate"]
         up, down = h["spot_up_1pct"], h["spot_down_1pct"]
-        assert up["direction"] in HEDGING_DIRECTIONS
-        assert down["direction"] in HEDGING_DIRECTIONS
+        for side in (up, down):
+            assert side["direction"] in HEDGING_DIRECTIONS
+            assert isinstance(side["dealer_shares_to_trade"], (int, float))
+            assert isinstance(side["notional_usd"], (int, float))
+            assert side["notional_usd"] != 0
+        # invariants
         assert up["dealer_shares_to_trade"] == -down["dealer_shares_to_trade"]
-        # Interpretation strings present
-        for k in ("gamma", "vanna", "charm"):
-            assert isinstance(s["interpretation"][k], str)
+        assert abs(up["notional_usd"]) == abs(down["notional_usd"])
+        # ── zero_dte block (3 fields) ──
+        z = s["zero_dte"]
+        assert isinstance(z, dict)
+        assert "net_gex" in z and (z["net_gex"] is None or isinstance(z["net_gex"], (int, float)))
+        assert "pct_of_total_gex" in z and (
+            z["pct_of_total_gex"] is None or isinstance(z["pct_of_total_gex"], (int, float))
+        )
+        assert "expiration" in z and (z["expiration"] is None or isinstance(z["expiration"], str))
 
     def test_levels_keys(self, hx):
         out = hx.exposure_levels("SPY", at=SPY_AT)

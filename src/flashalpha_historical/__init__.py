@@ -41,8 +41,16 @@ from .replay import (
     iter_minutes,
     replay,
 )
+from .types import (
+    ExposureSummaryExposures,
+    ExposureSummaryHedgingEstimate,
+    ExposureSummaryHedgingMove,
+    ExposureSummaryInterpretation,
+    ExposureSummaryResponse,
+    ExposureSummaryZeroDte,
+)
 
-__version__ = "0.1.0"
+__version__ = "0.4.0rc1"
 __all__ = [
     "FlashAlphaHistorical",
     "BASE_URL",
@@ -64,4 +72,11 @@ __all__ = [
     "iter_minutes",
     "is_trading_day",
     "replay",
+    # ── ExposureSummary typed models ──
+    "ExposureSummaryResponse",
+    "ExposureSummaryExposures",
+    "ExposureSummaryInterpretation",
+    "ExposureSummaryHedgingEstimate",
+    "ExposureSummaryHedgingMove",
+    "ExposureSummaryZeroDte",
 ]
