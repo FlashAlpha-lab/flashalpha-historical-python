@@ -295,17 +295,95 @@ class TestSurface:
 
 
 class TestVrp:
-    def test_vrp_dashboard_keys(self, hx):
+    def test_vrp_every_field_declared_in_poco_must_be_referenced(self, hx):
+        """Every leaf field declared in VrpResponse must be referenced.
+
+        Mirrors the 100% field-coverage discipline used for ExposureSummary.
+        Adapted for historical specifics:
+          - z_score / percentile / vrp_regime / strategy_scores /
+            net_harvest_score may be None when warmup is short.
+          - macro.fed_funds is intentionally absent on historical responses.
+        """
         v = hx.vrp("SPY", at=SPY_AT)
-        # Core block
+
+        # ── top-level scalars ──
+        assert v["symbol"] == "SPY"
+        assert isinstance(v["underlying_price"], (int, float))
+        assert isinstance(v["as_of"], str) and v["as_of"]
+        assert isinstance(v["market_open"], bool)
+        assert isinstance(v["variance_risk_premium"], (int, float))
+        assert isinstance(v["convexity_premium"], (int, float))
+        assert isinstance(v["fair_vol"], (int, float))
+        assert v["dealer_flow_risk"] is None or isinstance(v["dealer_flow_risk"], int)
+        assert isinstance(v["warnings"], list)
+        # net_harvest_score: nullable on historical with thin warmup
+        assert v.get("net_harvest_score") is None or isinstance(v["net_harvest_score"], int)
+        # strategy_scores: whole BLOCK nullable on historical
+        ss = v.get("strategy_scores")
+        if ss is not None:
+            for k in ("short_put_spread", "short_strangle", "iron_condor", "calendar_spread"):
+                assert ss.get(k) is None or isinstance(ss[k], int), f"strategy_scores.{k}"
+
+        # ── vrp.* (core block) ──
+        core = v["vrp"]
         for k in ("atm_iv", "rv_5d", "rv_10d", "rv_20d", "rv_30d",
                   "vrp_5d", "vrp_10d", "vrp_20d", "vrp_30d"):
-            assert k in v["vrp"]
-        # Top-level composites
-        assert "convexity_premium" in v
-        assert "fair_vol" in v
-        # Documented gap
-        assert v["macro"]["hy_spread"] == 3.5
+            assert isinstance(core[k], (int, float)), f"vrp.{k}"
+        # z_score, percentile nullable on early historical
+        assert core.get("z_score") is None or isinstance(core["z_score"], (int, float))
+        assert core.get("percentile") is None or isinstance(core["percentile"], int)
+        assert isinstance(core["history_days"], int)
+
+        # ── directional ──
+        d = v["directional"]
+        for k in ("put_wing_iv_25d", "call_wing_iv_25d",
+                  "downside_rv_20d", "upside_rv_20d",
+                  "downside_vrp", "upside_vrp"):
+            assert isinstance(d[k], (int, float)), f"directional.{k}"
+        # Customer-trap fields must NOT exist
+        assert "put_vrp" not in d
+        assert "call_vrp" not in d
+
+        # ── term_vrp[] ──
+        term = v["term_vrp"]
+        assert isinstance(term, list) and len(term) > 0
+        first = term[0]
+        for k in ("dte", "iv", "rv", "vrp"):
+            assert k in first, f"term_vrp[0].{k}"
+        assert isinstance(first["dte"], int)
+        for k in ("iv", "rv", "vrp"):
+            assert isinstance(first[k], (int, float))
+
+        # ── gex_conditioned ──
+        gex_c = v["gex_conditioned"]
+        assert isinstance(gex_c["regime"], str)
+        assert isinstance(gex_c["harvest_score"], (int, float))
+        assert isinstance(gex_c["interpretation"], str)
+
+        # ── vanna_conditioned ──
+        vanna_c = v["vanna_conditioned"]
+        assert isinstance(vanna_c["outlook"], str)
+        assert isinstance(vanna_c["interpretation"], str)
+
+        # ── regime (net_gex lives HERE, not top-level) ──
+        reg = v["regime"]
+        assert isinstance(reg["gamma"], str)
+        assert reg.get("vrp_regime") is None or isinstance(reg["vrp_regime"], str)
+        assert isinstance(reg["net_gex"], (int, float))
+        assert isinstance(reg["gamma_flip"], (int, float))
+        # Customer trap: net_gex must NOT be top-level on this endpoint
+        assert "net_gex" not in v
+
+        # ── macro (historical-specific shape) ──
+        m = v["macro"]
+        assert isinstance(m["vix"], (int, float))
+        assert isinstance(m["vix_3m"], (int, float))
+        assert isinstance(m["vix_term_slope"], (int, float))
+        assert isinstance(m["dgs10"], (int, float))
+        # hy_spread populated on historical (live currently null)
+        assert isinstance(m["hy_spread"], (int, float))
+        # fed_funds is live-only; must NOT be present on historical
+        assert "fed_funds" not in m
 
 
 # ── Max Pain ────────────────────────────────────────────────────────────────
