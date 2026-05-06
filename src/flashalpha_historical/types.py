@@ -71,12 +71,11 @@ class ExposureSummaryResponse(TypedDict, total=False):
     # be defensive — the field genuinely isn't returned for this endpoint.
     gamma_flip: Optional[float]
     # Confirmed live values in tests across Py/JS/.NET/Go/Java:
-    #   positive_gamma | negative_gamma | neutral
-    # Documented fourth value: undetermined (when there's no usable options
-    # data). `neutral` appears in edge cases where net_gex straddles zero.
+    #   positive_gamma | negative_gamma | unknown
+    # ``unknown`` is returned when there's no usable options data.
     # Don't conflate with ``maxpain.signal`` (also bullish/bearish/neutral but
     # a separate field).
-    regime: Literal["positive_gamma", "negative_gamma", "neutral", "undetermined"]
+    regime: Literal["positive_gamma", "negative_gamma", "unknown"]
     exposures: ExposureSummaryExposures
     interpretation: ExposureSummaryInterpretation
     hedging_estimate: ExposureSummaryHedgingEstimate
@@ -469,9 +468,8 @@ class MaxPainResponse(TypedDict, total=False):
     # GEX-based dealer alignment overlay. See ``MaxPainDealerAlignment``.
     dealer_alignment: MaxPainDealerAlignment
     # Same gamma classification as on ``exposure_summary``:
-    # positive_gamma | negative_gamma | neutral | undetermined.
-    regime: Optional[Literal["positive_gamma", "negative_gamma",
-                              "neutral", "undetermined"]]
+    # positive_gamma | negative_gamma | unknown.
+    regime: Optional[Literal["positive_gamma", "negative_gamma", "unknown"]]
     # Expected move from the ATM straddle, contextualized vs max pain.
     expected_move: MaxPainExpectedMove
     # 0-100 composite — likelihood of pinning to ``max_pain_strike``.
@@ -646,7 +644,7 @@ class StockSummaryExposure(TypedDict, total=False):
     put_wall: Optional[float]
     max_pain: Optional[float]
     highest_oi_strike: Optional[float]
-    regime: Optional[Literal["positive_gamma", "negative_gamma", "undetermined"]]
+    regime: Optional[Literal["positive_gamma", "negative_gamma", "unknown"]]
     interpretation: StockSummaryInterpretation
     # NOTE: ``dealer_shares`` is MAGNITUDE; ``direction`` carries sign.
     hedging_estimate: StockSummaryHedgingEstimate
