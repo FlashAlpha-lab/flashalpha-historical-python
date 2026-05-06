@@ -400,6 +400,82 @@ class TestMaxPain:
         min_strike = min(curve, key=lambda r: r["total_pain"])["strike"]
         assert abs(min_strike - mp["max_pain_strike"]) <= 5  # 1 strike tick
 
+    def test_max_pain_every_field_declared_in_poco_must_be_referenced(self, hx):
+        """Every leaf field declared in MaxPainResponse must be referenced.
+
+        100% field-coverage discipline. Historical-specific:
+            - oi_by_strike[].call_volume / put_volume are always 0
+              (the minute table doesn't carry intraday volume).
+        """
+        # Full-chain (no expiration filter) so max_pain_by_expiration is populated.
+        r = hx.max_pain("SPY", at=SPY_AT)
+
+        # ── top-level scalars ──
+        assert r["symbol"] == "SPY"
+        assert isinstance(r["underlying_price"], (int, float)) and r["underlying_price"] > 0
+        assert isinstance(r["as_of"], str) and r["as_of"]
+        assert isinstance(r["max_pain_strike"], (int, float))
+        assert r["signal"] in ("bullish", "bearish", "neutral")
+        assert isinstance(r["expiration"], str) and r["expiration"]
+        assert isinstance(r["put_call_oi_ratio"], (int, float))
+        assert r["regime"] in ("positive_gamma", "negative_gamma", "neutral", "undetermined")
+        assert isinstance(r["pin_probability"], int) and 0 <= r["pin_probability"] <= 100
+
+        # ── distance ──
+        dist = r["distance"]
+        assert isinstance(dist["absolute"], (int, float))
+        assert isinstance(dist["percent"], (int, float))
+        assert dist["direction"] in ("above", "below", "at")
+
+        # ── pain_curve[] ──
+        pc = r["pain_curve"]
+        assert isinstance(pc, list) and len(pc) > 0
+        row = pc[0]
+        assert isinstance(row["strike"], (int, float))
+        assert isinstance(row["call_pain"], (int, float))
+        assert isinstance(row["put_pain"], (int, float))
+        assert isinstance(row["total_pain"], (int, float))
+
+        # ── oi_by_strike[] ──
+        oi = r["oi_by_strike"]
+        assert isinstance(oi, list) and len(oi) > 0
+        oirow = oi[0]
+        assert isinstance(oirow["strike"], (int, float))
+        assert isinstance(oirow["call_oi"], int)
+        assert isinstance(oirow["put_oi"], int)
+        assert isinstance(oirow["total_oi"], int)
+        # Historical: volume fields are always 0 placeholders.
+        assert isinstance(oirow["call_volume"], int) and oirow["call_volume"] == 0
+        assert isinstance(oirow["put_volume"], int) and oirow["put_volume"] == 0
+
+        # ── max_pain_by_expiration[] ──
+        mpe = r["max_pain_by_expiration"]
+        assert isinstance(mpe, list) and len(mpe) > 0
+        mrow = mpe[0]
+        assert isinstance(mrow["expiration"], str) and mrow["expiration"]
+        assert isinstance(mrow["max_pain_strike"], (int, float))
+        assert isinstance(mrow["dte"], int)
+        assert isinstance(mrow["total_oi"], int)
+
+        # ── dealer_alignment ──
+        da = r["dealer_alignment"]
+        assert da["alignment"] in ("converging", "moderate", "diverging", "unknown")
+        assert isinstance(da["description"], str) and da["description"]
+        assert isinstance(da["gamma_flip"], (int, float))
+        assert isinstance(da["call_wall"], (int, float))
+        assert isinstance(da["put_wall"], (int, float))
+
+        # ── expected_move ──
+        em = r["expected_move"]
+        assert isinstance(em["straddle_price"], (int, float))
+        assert isinstance(em["atm_iv"], (int, float))
+        assert isinstance(em["max_pain_within_expected_range"], bool)
+
+    def test_max_pain_filtered_suppresses_calendar(self, hx):
+        """When `expiration` filter is set, max_pain_by_expiration MUST be None."""
+        mp = hx.max_pain("SPY", at=SPY_AT, expiration="2024-08-09")
+        assert mp.get("max_pain_by_expiration") is None
+
 
 # ── Errors ──────────────────────────────────────────────────────────────────
 

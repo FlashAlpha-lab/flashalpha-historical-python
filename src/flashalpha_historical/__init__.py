@@ -57,6 +57,13 @@ from .types import (
     VrpStrategyScores,
     VrpTermItem,
     VrpVannaConditioned,
+    MaxPainResponse,
+    MaxPainDistance,
+    MaxPainCurveRow,
+    MaxPainOiRow,
+    MaxPainByExpirationRow,
+    MaxPainDealerAlignment,
+    MaxPainExpectedMove,
 )
 
 __version__ = "0.4.0rc1"
@@ -98,4 +105,12 @@ __all__ = [
     "VrpRegime",
     "VrpStrategyScores",
     "VrpMacro",
+    # ── MaxPain ──
+    "MaxPainResponse",
+    "MaxPainDistance",
+    "MaxPainCurveRow",
+    "MaxPainOiRow",
+    "MaxPainByExpirationRow",
+    "MaxPainDealerAlignment",
+    "MaxPainExpectedMove",
 ]
