@@ -1,0 +1,112 @@
+# FlashAlpha Historical — Python SDK
+
+> Point-in-time replay of every live FlashAlpha analytics endpoint.
+> SPY 2018-04-16 → present, extended forward as new data is published;
+> additional symbols on demand.
+
+This is the historical (point-in-time) Python SDK. For current-minute
+analytics, see the companion `flashalpha` package — same endpoint
+shapes, no `at=` parameter required.
+
+## What it's for
+
+- **Backtesting strategies that depend on dealer flow.** Replay the
+  exact GEX / gamma-flip / hedging-flow snapshot a strategy would
+  have seen at any minute since 2018-04-16, with no future leakage.
+- **"What did the chain look like on date X?"** One call per minute,
+  same response shape as live.
+- **Event studies.** Pull dealer-positioning snapshots around
+  earnings / FOMC / known squeezes / VIX spikes.
+
+## Install
+
+```bash
+pip install flashalpha-historical
+```
+
+## Quickstart
+
+```python
+from flashalpha_historical import FlashAlphaHistorical
+
+hx = FlashAlphaHistorical(api_key="YOUR_API_KEY")
+
+# Single snapshot.
+snap = hx.exposure_summary("SPY", at="2020-03-16T15:30:00")
+print(snap["gamma_flip"], snap["regime"])
+
+# Backtest loop.
+from flashalpha_historical.replay import Backtester, iter_days
+
+bt = Backtester(hx, method="stock_summary", symbol="SPY")
+def strat(at, snap):
+    if snap["volatility"]["vrp"] is None:
+        return None
+    return {"signal": "short_vol" if snap["volatility"]["vrp"] > 5 else None}
+
+results = bt.run(iter_days("2024-01-02", "2024-03-29"), strat)
+```
+
+## Key endpoints
+
+Same set as the live API; every endpoint takes a required `at=`
+ISO8601 ET timestamp, and `as_of` in the response is snapped to the
+nearest available minute.
+
+- `GET /v1/stock/{symbol}/summary?at=...` — single best snapshot.
+  Price, IV, HV, VRP, 25-delta skew, IV term structure, options flow,
+  full dealer exposure, macro context.
+- `GET /v1/exposure/summary/{symbol}?at=...` — net dealer Greeks,
+  gamma flip, ±1% hedging estimate, regime narratives, 0DTE
+  attribution.
+- `GET /v1/exposure/zero-dte/{symbol}?at=...` — same-day-expiry deep
+  dive: ±10bp / ±25bp / ±50bp / ±1% hedging buckets, pin risk,
+  time-to-close decay, full strike grid.
+- `GET /v1/exposure/levels/{symbol}?at=...` — pared-down headline
+  strikes: gamma flip, max ±gamma, walls, 0DTE magnet.
+- `GET /v1/exposure/narrative/{symbol}?at=...` — LLM-friendly verbal
+  output. (Growth+)
+- `GET /v1/vrp/{symbol}?at=...` — Variance Risk Premium dashboard.
+  (Alpha+)
+- `GET /v1/maxpain/{symbol}?at=...` — max pain dashboard. (Basic+)
+
+## Historical-specific behaviour
+
+- `at=` is REQUIRED. The client raises `InvalidAtError` if it's
+  missing or malformed.
+- `as_of` is SNAPPED. Always read `as_of` from the response — never
+  echo your request `at` for downstream timestamping; they may differ
+  by ±1 minute (more around feed gaps).
+- Near the dataset start (2018-04-16), trailing-window calculations
+  (RV ladders, VRP percentile, z-score) may have insufficient warmup
+  and individual fields will be `None`. The `warnings` field on VRP
+  responses surfaces these — e.g. `"insufficient_history_for_zscore"`.
+- Some macro fields differ vs live: `macro.hy_spread` is populated on
+  historical (live currently returns `None`); `macro.fed_funds` is
+  absent on historical (live includes it).
+
+## Typed responses
+
+Every endpoint has a corresponding `TypedDict` model in
+`flashalpha_historical.types`. Each response is a plain `dict` at
+runtime — type checkers and IDEs see the field shape and provide
+autocomplete.
+
+```python
+from flashalpha_historical import StockSummaryResponse
+
+snap: StockSummaryResponse = hx.stock_summary("SPY", at="2020-03-16T15:30:00")
+```
+
+## Tier breakdown
+
+- **Alpha**: full historical replay of `exposure_summary`,
+  `exposure_levels`, `zero_dte`, `maxpain`, `stock_summary`, `vrp`.
+- **Growth**: adds `exposure_narrative`.
+- **Pro / Enterprise**: bespoke; contact sales.
+
+## Links
+
+- Playground: https://lab.flashalpha.com/swagger
+- Sign up: https://flashalpha.com
+- Live SDK: `pip install flashalpha`

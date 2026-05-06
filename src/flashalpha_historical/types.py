@@ -479,3 +479,399 @@ class MaxPainResponse(TypedDict, total=False):
     # remaining (25%), gamma magnitude (20%). Most meaningful for near-term
     # expiries — for LEAPs this score will be low regardless of OI shape.
     pin_probability: Optional[int]
+
+
+# ─── StockSummary ────────────────────────────────────────────────────────────
+#
+# Typed model for ``GET /v1/stock/{symbol}/summary?at=...``.
+#
+# Historical replay of FlashAlpha's "single best snapshot" endpoint —
+# one round-trip returns the price quote, IV/HV/VRP, the 25-delta skew
+# triangle, the IV term structure, options flow aggregates, the full
+# dealer-exposure view, and the macro context AS OF the requested
+# timestamp. Same shape as the live endpoint with two operational
+# differences:
+#
+#   - ``at=`` is REQUIRED on every request (ISO8601 ET timestamp).
+#   - ``as_of`` is SNAPPED to the nearest available minute in the
+#     historical dataset (the request ``at`` is the target; the
+#     response ``as_of`` is what was actually served).
+#
+# Hedging-estimate sign convention DIFFERS from /v1/exposure/zero-dte:
+#   - On stock_summary, ``hedging_estimate.spot_*_1pct.dealer_shares``
+#     is a MAGNITUDE; the ``direction`` field carries the sign.
+#   - On zero-dte, ``dealer_shares_to_trade`` is signed.
+
+
+class StockSummaryPrice(TypedDict, total=False):
+    """Quote block — bid/ask/mid/last for the underlying.
+
+    On historical, all four fields are minute-snapped to the prevailing
+    NBBO at ``as_of`` — bid/ask reflect the quote regime at that minute,
+    not a continuous live tick.
+    """
+
+    bid: Optional[float]
+    ask: Optional[float]
+    # ``(bid + ask) / 2``. Reference price for all dollarised numbers.
+    mid: Optional[float]
+    # Last printed trade at or before ``as_of``.
+    last: Optional[float]
+    # ET wall-clock timestamp of the underlying ``last`` print.
+    last_update: Optional[str]
+
+
+class StockSummarySkew25d(TypedDict, total=False):
+    """25-delta skew snapshot at the front-month expiry as of ``at``."""
+
+    expiry: Optional[str]
+    days_to_expiry: Optional[int]
+    put_25d_iv: Optional[float]
+    atm_iv: Optional[float]
+    call_25d_iv: Optional[float]
+    # ``put_25d_iv - call_25d_iv``. Positive = puts richer (typical
+    # equity-index regime).
+    skew_25d: Optional[float]
+    # ``(put_25d_iv + call_25d_iv) / (2 * atm_iv)``. ``> 1`` = wings
+    # richer than ATM.
+    smile_ratio: Optional[float]
+
+
+class StockSummaryIvTermItem(TypedDict, total=False):
+    """One row of the IV term structure — (expiry, IV, DTE)."""
+
+    expiry: Optional[str]
+    iv: Optional[float]
+    days_to_expiry: Optional[int]
+
+
+class StockSummaryVolatility(TypedDict, total=False):
+    """Volatility block — ATM IV, HV ladders, VRP, skew, term structure.
+
+    HV ladders are computed from spot returns over the trailing 20/60
+    trading days BEFORE ``at`` (no future leakage on historical).
+    """
+
+    atm_iv: Optional[float]
+    hv_20: Optional[float]
+    hv_60: Optional[float]
+    # ``atm_iv - hv_20`` at ``as_of``. Positive = options pricing more
+    # vol than the underlying realised over the trailing 20d.
+    vrp: Optional[float]
+    skew_25d: StockSummarySkew25d
+    iv_term_structure: List[StockSummaryIvTermItem]
+
+
+class StockSummaryOptionsFlow(TypedDict, total=False):
+    """Aggregated chain flow — total OI, volume, and put/call ratios.
+
+    Note on historical: chain volume reflects what was traded between
+    market open and ``as_of`` on the requested day; on snapshots before
+    market open or on weekends/holidays, volume fields will be ``0``.
+    """
+
+    total_call_oi: Optional[int]
+    total_put_oi: Optional[int]
+    total_call_volume: Optional[int]
+    total_put_volume: Optional[int]
+    pc_ratio_oi: Optional[float]
+    pc_ratio_volume: Optional[float]
+    active_expirations: Optional[int]
+
+
+class StockSummaryInterpretation(TypedDict, total=False):
+    """Plain-English narrative for each Greek regime — safe verbatim."""
+
+    gamma: Optional[str]
+    vanna: Optional[str]
+    charm: Optional[str]
+
+
+class StockSummaryHedgingMove(TypedDict, total=False):
+    """One side (up or down) of the dealer-hedging-flow estimate.
+
+    NOTE — sign convention on stock_summary: ``dealer_shares`` is the
+    absolute MAGNITUDE; ``direction`` carries the sign. This DIFFERS
+    from the zero-dte endpoint, where ``dealer_shares_to_trade`` is
+    signed.
+    """
+
+    # MAGNITUDE only — see parent docstring.
+    dealer_shares: Optional[float]
+    direction: Optional[Literal["buy", "sell"]]
+    notional_usd: Optional[float]
+
+
+class StockSummaryHedgingEstimate(TypedDict, total=False):
+    """Estimated dealer hedging flow at +/- 1% spot moves."""
+
+    spot_up_1pct: StockSummaryHedgingMove
+    spot_down_1pct: StockSummaryHedgingMove
+
+
+class StockSummaryZeroDte(TypedDict, total=False):
+    """Same-day-expiration contribution to the chain totals at ``as_of``."""
+
+    net_gex: Optional[float]
+    pct_of_total: Optional[float]
+    # ``"yyyy-MM-dd"`` of the same-day expiry; ``None`` on names without
+    # a 0DTE on the requested date.
+    expiration: Optional[str]
+
+
+class StockSummaryTopStrike(TypedDict, total=False):
+    """One row of the "top strikes by net GEX" leaderboard."""
+
+    strike: Optional[float]
+    net_gex: Optional[float]
+    call_oi: Optional[int]
+    put_oi: Optional[int]
+    total_oi: Optional[int]
+
+
+class StockSummaryExposure(TypedDict, total=False):
+    """Full dealer-exposure block at ``as_of``.
+
+    ``Optional[StockSummaryExposure]`` on the parent — the entire
+    block is ``None`` on names with no usable options chain at the
+    requested timestamp.
+    """
+
+    net_gex: Optional[float]
+    net_dex: Optional[float]
+    net_vex: Optional[float]
+    net_chex: Optional[float]
+    gamma_flip: Optional[float]
+    call_wall: Optional[float]
+    put_wall: Optional[float]
+    max_pain: Optional[float]
+    highest_oi_strike: Optional[float]
+    regime: Optional[Literal["positive_gamma", "negative_gamma", "undetermined"]]
+    interpretation: StockSummaryInterpretation
+    # NOTE: ``dealer_shares`` is MAGNITUDE; ``direction`` carries sign.
+    hedging_estimate: StockSummaryHedgingEstimate
+    zero_dte: StockSummaryZeroDte
+    top_strikes: List[StockSummaryTopStrike]
+    oi_weighted_dte: Optional[float]
+
+
+class StockSummaryMacroIndex(TypedDict, total=False):
+    """One macro index level (VIX, VVIX, SKEW, SPX, MOVE).
+
+    Historical macro is sourced from FRED / CBOE end-of-day series;
+    intraday minute snapshots use the most recent available daily
+    close. All three fields can be ``None`` together on weekends or
+    when the upstream feed didn't carry the index on the requested date.
+    """
+
+    value: Optional[float]
+    change: Optional[float]
+    change_pct: Optional[float]
+
+
+class StockSummaryVixTermLevels(TypedDict, total=False):
+    """VIX term-structure levels: 9-day / 30-day / 3-month / 6-month."""
+
+    vix9d: Optional[float]
+    vix: Optional[float]
+    vix3m: Optional[float]
+    vix6m: Optional[float]
+
+
+class StockSummaryVixTermStructure(TypedDict, total=False):
+    """VIX term structure shape — levels, near slope, contango/backwardation."""
+
+    levels: StockSummaryVixTermLevels
+    near_slope_pct: Optional[float]
+    structure: Optional[Literal["contango", "backwardation"]]
+
+
+class StockSummaryVixFutures(TypedDict, total=False):
+    """VIX futures basis — front-month vs spot VIX."""
+
+    front_month: Optional[float]
+    spot: Optional[float]
+    spread: Optional[float]
+    basis_pct: Optional[float]
+    basis: Optional[Literal["contango", "backwardation"]]
+
+
+class StockSummaryFearAndGreed(TypedDict, total=False):
+    """CNN-style fear-and-greed composite."""
+
+    score: Optional[int]
+    rating: Optional[str]
+
+
+class StockSummaryMacro(TypedDict, total=False):
+    """Macro context block at ``as_of`` — VIX/VVIX/SKEW/SPX/MOVE.
+
+    Block always present on a successful response; individual leaves
+    can be ``None`` on dates outside the upstream macro feed's coverage.
+    """
+
+    vix: StockSummaryMacroIndex
+    vvix: StockSummaryMacroIndex
+    skew: StockSummaryMacroIndex
+    spx: StockSummaryMacroIndex
+    move: StockSummaryMacroIndex
+    vix_term_structure: StockSummaryVixTermStructure
+    vix_futures: StockSummaryVixFutures
+    fear_and_greed: StockSummaryFearAndGreed
+
+
+class StockSummaryResponse(TypedDict, total=False):
+    """Historical replay of FlashAlpha's "single best snapshot" endpoint.
+
+    Response from ``GET /v1/stock/{symbol}/summary?at=...``. Returns
+    the full picture for a name as of the requested timestamp:
+    price, IV/HV/VRP, 25-delta skew, IV term structure, options flow
+    aggregates, full dealer exposure (Greeks, walls, gamma flip, max
+    pain, hedging estimate, 0DTE attribution, top strikes), and macro
+    context (VIX, VVIX, SKEW, SPX, MOVE, term structure, fear/greed).
+
+    Historical-specific behaviour
+    -----------------------------
+    - **``at=`` is REQUIRED.** Pass an ISO8601 ET timestamp
+      (``"YYYY-MM-DDTHH:MM:SS"``). The historical client raises
+      ``InvalidAtError`` if it's missing or malformed.
+    - **``as_of`` is SNAPPED.** The requested ``at`` is the target;
+      the response ``as_of`` is the actual minute the historical
+      dataset served — typically within ±1 minute, occasionally further
+      around feed gaps. Always read ``as_of`` rather than echoing your
+      request ``at`` for downstream timestamping.
+    - On dates near the dataset start (2018-04-16), HV ladders may
+      have insufficient warmup and individual fields will be ``None``.
+      ``warnings``-style errors are surfaced via the response shape's
+      ``Optional`` fields, not a separate warnings list on this
+      endpoint.
+
+    Hedging-estimate sign convention (IMPORTANT)
+    --------------------------------------------
+    On THIS endpoint, ``exposure.hedging_estimate.spot_*_1pct.dealer_shares``
+    is a MAGNITUDE; ``direction`` (``"buy"``/``"sell"``) carries the
+    sign. This DIFFERS from the zero-dte endpoint, where the
+    ``dealer_shares_to_trade`` field is signed.
+    """
+
+    symbol: str
+    # SNAPPED minute — read THIS, not your request ``at``.
+    as_of: str
+    # ``True`` if NYSE was open at ``as_of``.
+    market_open: Optional[bool]
+    price: StockSummaryPrice
+    volatility: StockSummaryVolatility
+    options_flow: StockSummaryOptionsFlow
+    # ``None`` on names without a usable options chain at ``as_of``.
+    exposure: Optional[StockSummaryExposure]
+    # Block always present; individual leaves can be ``None``.
+    macro: StockSummaryMacro
+
+
+# ─── ExposureNarrative ───────────────────────────────────────────────────────
+#
+# Typed model for ``GET /v1/exposure/narrative/{symbol}?at=...`` (Growth+).
+#
+# Historical replay of FlashAlpha's "LLM-friendly verbal output"
+# endpoint — narrative strings safe verbatim, paired with the numeric
+# data block that backs them.
+
+
+class NarrativeOiChange(TypedDict, total=False):
+    """One row of the "top OI changes vs prior session" leaderboard."""
+
+    strike: Optional[float]
+    type: Optional[Literal["call", "put"]]
+    # Signed: positive = position added, negative = closed.
+    oi_change: Optional[int]
+    volume: Optional[int]
+
+
+class NarrativeData(TypedDict, total=False):
+    """Numeric data block backing the narrative strings at ``as_of``."""
+
+    net_gex: Optional[float]
+    # Net dealer GEX at the prior session's close (anchor for
+    # ``net_gex_change_pct``).
+    net_gex_prior: Optional[float]
+    net_gex_change_pct: Optional[float]
+    vix: Optional[float]
+    gamma_flip: Optional[float]
+    call_wall: Optional[float]
+    put_wall: Optional[float]
+    regime: Optional[str]
+    zero_dte_pct: Optional[float]
+    top_oi_changes: List[NarrativeOiChange]
+
+
+class Narrative(TypedDict, total=False):
+    """Narrative strings + the data block that backs them.
+
+    Every string field below is editorially safe to surface verbatim
+    in customer-facing UIs / LLM tool-call outputs.
+    """
+
+    regime: Optional[str]
+    gex_change: Optional[str]
+    key_levels: Optional[str]
+    flow: Optional[str]
+    vanna: Optional[str]
+    charm: Optional[str]
+    zero_dte: Optional[str]
+    outlook: Optional[str]
+    data: NarrativeData
+
+
+class NarrativeResponse(TypedDict, total=False):
+    """FlashAlpha's "LLM-friendly verbal output" endpoint — historical replay.
+
+    Response from ``GET /v1/exposure/narrative/{symbol}?at=...``
+    (Growth+). Returns plain-English narrative strings paired with the
+    numeric data block that backs them. Every string is editorially
+    safe to surface verbatim in chat / newsletters / LLM outputs.
+
+    ``at=`` is required; ``as_of`` is snapped to the nearest available
+    minute. Tier requirement: Growth+ (returns 403 ``tier_restricted``).
+    """
+
+    symbol: str
+    underlying_price: Optional[float]
+    # Snapped minute — read THIS, not your request ``at``.
+    as_of: str
+    narrative: Narrative
+
+
+# ─── ExposureLevels ──────────────────────────────────────────────────────────
+#
+# Typed model for ``GET /v1/exposure/levels/{symbol}?at=...``.
+
+
+class ExposureLevels(TypedDict, total=False):
+    """The seven canonical dealer-flow levels for a symbol at ``as_of``."""
+
+    gamma_flip: Optional[float]
+    max_positive_gamma: Optional[float]
+    max_negative_gamma: Optional[float]
+    call_wall: Optional[float]
+    put_wall: Optional[float]
+    highest_oi_strike: Optional[float]
+    # ``None`` on dates where the symbol had no same-day expiry.
+    zero_dte_magnet: Optional[float]
+
+
+class ExposureLevelsResponse(TypedDict, total=False):
+    """Dealer-flow levels from ``GET /v1/exposure/levels/{symbol}?at=...``.
+
+    Pared-down view returning just the headline strikes — gamma flip,
+    max ±gamma, call wall, put wall, highest OI strike, 0DTE magnet —
+    as of the requested timestamp. Cheaper / smaller payload than
+    ``/v1/exposure/summary``.
+
+    ``at=`` is required; ``as_of`` is snapped to the nearest minute.
+    """
+
+    symbol: str
+    underlying_price: Optional[float]
+    # Snapped minute — read THIS, not your request ``at``.
+    as_of: str
+    levels: ExposureLevels
