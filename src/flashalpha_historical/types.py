@@ -18,7 +18,7 @@ fields are documented as always-null/zero ("backtest_mode" gaps) — those are
 typed as their nullable form so callers don't write code assuming a value.
 """
 
-from typing import List, Literal, Optional, TypedDict
+from typing import Any, Dict, List, Literal, Optional, TypedDict
 
 
 # ─── ExposureSummary ─────────────────────────────────────────────────────────
@@ -1369,3 +1369,122 @@ class ChexResponse(TypedDict, total=False):
     net_chex: Optional[float]
     chex_interpretation: Optional[str]
     strikes: List[ChexStrikeRow]
+
+
+# ─── Account / Reference / System ────────────────────────────────────────────
+#
+# Typed models for the small endpoints that don't fit anywhere else:
+#   - ``GET /v1/account``      — quota & plan
+#   - ``GET /v1/tickers``      — list of available tickers (also serves as
+#                                 the historical coverage table — see SDK
+#                                 docs; tests on this repo target the
+#                                 coverage shape, not this generic shape)
+#   - ``GET /v1/symbols``      — symbols with live data
+#   - ``GET /v1/options/{t}``  — option-chain metadata (expirations + strikes)
+#   - ``GET /health``          — health check (public)
+
+
+class AccountResponse(TypedDict, total=False):
+    """Account info & quota from ``GET /v1/account``.
+
+    Returns the caller's plan tier, the day's request quota, how much has
+    been consumed, and when the counter resets.
+    """
+
+    user_id: Optional[str]
+    email: Optional[str]
+    # Plan tier (e.g. ``"free"``, ``"basic"``, ``"growth"``, ``"alpha"``).
+    plan: Optional[str]
+    daily_limit: Optional[int]
+    usage_today: Optional[int]
+    remaining: Optional[int]
+    # ISO timestamp at which ``usage_today`` resets to zero.
+    resets_at: Optional[str]
+
+
+class TickersResponse(TypedDict, total=False):
+    """List of available stock tickers from ``GET /v1/tickers``.
+
+    Note: on the Historical API, the ``tickers()`` method actually returns
+    a coverage table (different shape — see ``FlashAlphaHistorical.tickers``
+    docstring). This generic shape is included for completeness / parity
+    with the live SDK; integration tests on this repo target the coverage
+    shape directly.
+    """
+
+    tickers: List[str]
+    count: Optional[int]
+
+
+class SymbolsResponse(TypedDict, total=False):
+    """Currently queried symbols with live data from ``GET /v1/symbols``."""
+
+    symbols: List[str]
+    count: Optional[int]
+    # Free-form note from the server (e.g. coverage caveats).
+    note: Optional[str]
+    # ISO timestamp of the last refresh of the symbol list.
+    last_updated: Optional[str]
+
+
+class OptionsMetaExpiration(TypedDict, total=False):
+    """One per-expiry row of the option-chain metadata."""
+
+    # ``"yyyy-MM-dd"`` of the expiry.
+    expiration: Optional[str]
+    strikes: List[float]
+
+
+class OptionsMetaResponse(TypedDict, total=False):
+    """Option-chain metadata from ``GET /v1/options/{ticker}``.
+
+    Returns the list of expirations and the strikes available at each
+    expiry.
+    """
+
+    symbol: Optional[str]
+    expirations: List[OptionsMetaExpiration]
+    expiration_count: Optional[int]
+    total_contracts: Optional[int]
+
+
+class HealthResponse(TypedDict, total=False):
+    """Public health-check response from ``GET /health``."""
+
+    status: Optional[str]
+
+
+# ─── Screener ────────────────────────────────────────────────────────────────
+#
+# Typed model for ``POST /v1/screener``.
+#
+# Same envelope shape as the live API: a ``meta`` block + a ``data`` list of
+# rows. Rows are intentionally untyped — ``select`` and ``formulas`` make
+# the row shape user-controlled, so the canonical type is
+# ``List[Dict[str, Any]]``.
+
+
+class ScreenerMeta(TypedDict, total=False):
+    """Query metadata returned with every screener response."""
+
+    total_count: Optional[int]
+    returned_count: Optional[int]
+    universe_size: Optional[int]
+    offset: Optional[int]
+    limit: Optional[int]
+    tier: Optional[str]
+    # ET wall-clock timestamp the result set was computed at.
+    as_of: Optional[str]
+
+
+class ScreenerResponse(TypedDict, total=False):
+    """Screener envelope from ``POST /v1/screener``.
+
+    The ``data`` list rows are intentionally typed as ``List[Dict[str, Any]]``
+    because the row shape is user-controlled — ``select`` chooses which fields
+    are returned and ``formulas`` (Alpha+) adds computed columns.
+    """
+
+    meta: ScreenerMeta
+    # Rows are select-dependent; left untyped. Read with ``row["symbol"]`` etc.
+    data: List[Dict[str, Any]]

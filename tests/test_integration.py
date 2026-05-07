@@ -21,10 +21,24 @@ from datetime import datetime
 import pytest
 
 from flashalpha_historical import (
+    AdvVolArbitrageFlag,
+    AdvVolForwardPrice,
+    AdvVolGreekSurface,
+    AdvVolGreeksSurfaces,
+    AdvVolSviParam,
+    AdvVolTotalVarianceSurface,
+    AdvVolVarianceSwap,
+    AdvVolatilityResponse,
     Backtester,
+    ChexResponse,
+    ChexStrikeRow,
+    DexResponse,
+    DexStrikeRow,
     ExposureLevels,
     ExposureLevelsResponse,
     FlashAlphaHistorical,
+    GexResponse,
+    GexStrikeRow,
     InvalidAtError,
     Narrative,
     NarrativeData,
@@ -48,6 +62,24 @@ from flashalpha_historical import (
     StockSummaryVixTermStructure,
     StockSummaryVolatility,
     StockSummaryZeroDte,
+    SurfaceResponse,
+    TierRestrictedError,
+    VexResponse,
+    VexStrikeRow,
+    VolatilityGexByDte,
+    VolatilityHedgingScenario,
+    VolatilityIvDispersion,
+    VolatilityIvRvSpreads,
+    VolatilityLiquidity,
+    VolatilityOiConcentration,
+    VolatilityPcByExpiry,
+    VolatilityPcByMoneyness,
+    VolatilityPutCallProfile,
+    VolatilityRealizedVol,
+    VolatilityResponse,
+    VolatilitySkewProfile,
+    VolatilityTermStructure,
+    VolatilityThetaByDte,
     iter_days,
     iter_minutes,
     replay,
@@ -611,6 +643,18 @@ _WALKABLE_TYPED_DICTS = {
     StockSummaryMacro,
     NarrativeData,
     NarrativeOiChange,
+    # ── rc.9 nested TypedDicts (Volatility / AdvVolatility) ──
+    VolatilityRealizedVol,
+    VolatilityIvRvSpreads,
+    VolatilityTermStructure,
+    VolatilityIvDispersion,
+    VolatilityPutCallProfile,
+    VolatilityPcByMoneyness,
+    VolatilityOiConcentration,
+    VolatilityLiquidity,
+    AdvVolTotalVarianceSurface,
+    AdvVolGreeksSurfaces,
+    AdvVolGreekSurface,
 }
 
 
@@ -735,3 +779,214 @@ class TestFieldWalkRc4:
         # SPY had a same-day expiry on 2024-08-05; zero_dte_magnet MUST be populated.
         assert levels["zero_dte_magnet"] is not None, "levels.zero_dte_magnet is None on SPY @ SPY_AT"
         assert isinstance(levels["zero_dte_magnet"], (int, float))
+
+
+# ── Field-walk coverage for the rc.9 POCOs ──────────────────────────────────
+#
+# Mirrors the live SDK's rc.9 field-walk tests — Volatility, AdvVolatility,
+# Surface, Gex/Dex/Vex/Chex. Excludes OptionQuote/StockQuote because the
+# historical API uses different quote endpoints with their own shapes
+# (``/v1/optionquote`` and ``/v1/stockquote`` with ``?at=``); those have
+# their own assertions in TestMarketData and would need separate typed
+# models if/when promoted to canonical.
+#
+# Historical-specific shape note: ``hx.dex/vex/chex`` wrap the typed
+# response inside a ``payload`` envelope (live does not). ``hx.gex`` is
+# not wrapped — same shape as live. Field-walks below unwrap as needed.
+
+
+class TestFieldWalkRc9:
+    """Field-walk coverage for rc.9 response shapes on the historical API."""
+
+    def test_volatility_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``VolatilityResponse`` (and walkable nested
+        blocks) must be present on a SPY snapshot at SPY_AT.
+
+        Volatility is Growth+; skip on tier_restricted rather than fail.
+        List-of-TypedDict blocks are validated elementwise on the first row
+        when non-empty.
+        """
+        try:
+            result = hx.volatility("SPY", at=SPY_AT)
+        except TierRestrictedError as exc:
+            pytest.skip(f"volatility requires Growth+: {exc}")
+
+        for key in VolatilityResponse.__annotations__:
+            assert key in result, f"volatility.{key} missing from response"
+
+        assert result["symbol"] == "SPY"
+        assert isinstance(result["as_of"], str) and result["as_of"]
+        assert result["underlying_price"] is not None
+        assert result["market_open"] is not None
+        assert isinstance(result["atm_iv"], (int, float))
+
+        _assert_all_keys_populated("realized_vol", VolatilityRealizedVol, result["realized_vol"])
+        _assert_all_keys_populated("iv_rv_spreads", VolatilityIvRvSpreads, result["iv_rv_spreads"])
+        _assert_all_keys_populated("term_structure", VolatilityTermStructure, result["term_structure"])
+        _assert_all_keys_populated("iv_dispersion", VolatilityIvDispersion, result["iv_dispersion"])
+        _assert_all_keys_populated("put_call_profile", VolatilityPutCallProfile, result["put_call_profile"])
+        _assert_all_keys_populated("oi_concentration", VolatilityOiConcentration, result["oi_concentration"])
+        _assert_all_keys_populated("liquidity", VolatilityLiquidity, result["liquidity"])
+
+        skew = result["skew_profiles"]
+        assert isinstance(skew, list)
+        if skew:
+            _assert_all_keys_populated("skew_profiles[0]", VolatilitySkewProfile, skew[0])
+
+        gex_by_dte = result["gex_by_dte"]
+        assert isinstance(gex_by_dte, list)
+        if gex_by_dte:
+            _assert_all_keys_populated("gex_by_dte[0]", VolatilityGexByDte, gex_by_dte[0])
+
+        theta_by_dte = result["theta_by_dte"]
+        assert isinstance(theta_by_dte, list)
+        if theta_by_dte:
+            _assert_all_keys_populated("theta_by_dte[0]", VolatilityThetaByDte, theta_by_dte[0])
+
+        hedging = result["hedging_scenarios"]
+        assert isinstance(hedging, list)
+        if hedging:
+            _assert_all_keys_populated("hedging_scenarios[0]", VolatilityHedgingScenario, hedging[0])
+
+        pc_by_expiry = result["put_call_profile"]["by_expiry"]
+        assert isinstance(pc_by_expiry, list)
+        if pc_by_expiry:
+            _assert_all_keys_populated(
+                "put_call_profile.by_expiry[0]", VolatilityPcByExpiry, pc_by_expiry[0]
+            )
+
+    def test_adv_volatility_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``AdvVolatilityResponse`` (and walkable
+        nested surfaces) must be present on a SPY snapshot.
+
+        Alpha+ only — ``pytest.skip`` on ``TierRestrictedError``.
+        """
+        try:
+            result = hx.adv_volatility("SPY", at=SPY_AT)
+        except TierRestrictedError as exc:
+            pytest.skip(f"adv_volatility requires Alpha+: {exc}")
+
+        for key in AdvVolatilityResponse.__annotations__:
+            assert key in result, f"adv_volatility.{key} missing from response"
+
+        assert result["symbol"] == "SPY"
+        assert isinstance(result["as_of"], str) and result["as_of"]
+
+        _assert_all_keys_populated(
+            "total_variance_surface", AdvVolTotalVarianceSurface, result["total_variance_surface"]
+        )
+        _assert_all_keys_populated(
+            "greeks_surfaces", AdvVolGreeksSurfaces, result["greeks_surfaces"]
+        )
+
+        svi = result["svi_parameters"]
+        assert isinstance(svi, list)
+        if svi:
+            _assert_all_keys_populated("svi_parameters[0]", AdvVolSviParam, svi[0])
+
+        fwds = result["forward_prices"]
+        assert isinstance(fwds, list)
+        if fwds:
+            _assert_all_keys_populated("forward_prices[0]", AdvVolForwardPrice, fwds[0])
+
+        arb = result["arbitrage_flags"]
+        assert isinstance(arb, list)
+        if arb:
+            _assert_all_keys_populated("arbitrage_flags[0]", AdvVolArbitrageFlag, arb[0])
+
+        var_swaps = result["variance_swap_fair_values"]
+        assert isinstance(var_swaps, list)
+        if var_swaps:
+            _assert_all_keys_populated(
+                "variance_swap_fair_values[0]", AdvVolVarianceSwap, var_swaps[0]
+            )
+
+    def test_surface_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``SurfaceResponse`` must be present at SPY_AT.
+
+        Historical surface requires ``?at=`` and may raise
+        ``InsufficientDataError`` on thin chains. SPY at SPY_AT (a known-good
+        high-OI minute) should always fit.
+        """
+        result = hx.surface("SPY", at=SPY_AT)
+
+        for key in SurfaceResponse.__annotations__:
+            assert key in result, f"surface.{key} missing from response"
+
+        assert result["symbol"] == "SPY"
+        assert isinstance(result["as_of"], str) and result["as_of"]
+        assert result["spot"] is not None
+        assert isinstance(result["grid_size"], int) and result["grid_size"] > 0
+        assert isinstance(result["tenors"], list) and len(result["tenors"]) > 0
+        assert isinstance(result["moneyness"], list) and len(result["moneyness"]) > 0
+        assert isinstance(result["iv"], list) and len(result["iv"]) > 0
+        assert isinstance(result["iv"][0], list) and len(result["iv"][0]) > 0
+        assert isinstance(result["slices_used"], list)
+
+    def test_gex_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``GexResponse`` (and ``GexStrikeRow`` per row)
+        must be present at SPY_AT.
+
+        Historical ``hx.gex`` returns the unwrapped shape (same as live).
+        """
+        result = hx.gex("SPY", at=SPY_AT)
+
+        for key in GexResponse.__annotations__:
+            assert key in result, f"gex.{key} missing from response"
+
+        assert result["symbol"] == "SPY"
+        assert isinstance(result["as_of"], str) and result["as_of"]
+        assert result["underlying_price"] is not None
+        strikes = result["strikes"]
+        assert isinstance(strikes, list) and len(strikes) > 0
+        for key in GexStrikeRow.__annotations__:
+            assert key in strikes[0], f"gex.strikes[0].{key} missing"
+
+    def test_dex_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``DexResponse`` must be present at SPY_AT.
+
+        Historical wraps Dex/Vex/Chex inside a ``payload`` envelope — unwrap
+        before walking the typed shape.
+        """
+        out = hx.dex("SPY", at=SPY_AT)
+        assert "payload" in out, "historical dex response must carry a `payload` envelope"
+        result = out["payload"]
+        for key in DexResponse.__annotations__:
+            assert key in result, f"dex.{key} missing from response"
+        assert result["symbol"] == "SPY"
+        strikes = result["strikes"]
+        assert isinstance(strikes, list) and len(strikes) > 0
+        for key in DexStrikeRow.__annotations__:
+            assert key in strikes[0], f"dex.strikes[0].{key} missing"
+
+    def test_vex_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``VexResponse`` must be present at SPY_AT.
+
+        Wrapped in a ``payload`` envelope on historical (see dex above).
+        """
+        out = hx.vex("SPY", at=SPY_AT)
+        assert "payload" in out
+        result = out["payload"]
+        for key in VexResponse.__annotations__:
+            assert key in result, f"vex.{key} missing from response"
+        assert result["symbol"] == "SPY"
+        strikes = result["strikes"]
+        assert isinstance(strikes, list) and len(strikes) > 0
+        for key in VexStrikeRow.__annotations__:
+            assert key in strikes[0], f"vex.strikes[0].{key} missing"
+
+    def test_chex_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``ChexResponse`` must be present at SPY_AT.
+
+        Wrapped in a ``payload`` envelope on historical (see dex above).
+        """
+        out = hx.chex("SPY", at=SPY_AT)
+        assert "payload" in out
+        result = out["payload"]
+        for key in ChexResponse.__annotations__:
+            assert key in result, f"chex.{key} missing from response"
+        assert result["symbol"] == "SPY"
+        strikes = result["strikes"]
+        assert isinstance(strikes, list) and len(strikes) > 0
+        for key in ChexStrikeRow.__annotations__:
+            assert key in strikes[0], f"chex.strikes[0].{key} missing"
