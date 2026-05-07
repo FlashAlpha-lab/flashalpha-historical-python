@@ -30,11 +30,18 @@ from .exceptions import (
 
 if TYPE_CHECKING:
     from .types import (
+        AdvVolatilityResponse,
+        ChexResponse,
+        DexResponse,
         ExposureLevelsResponse,
         ExposureSummaryResponse,
+        GexResponse,
         MaxPainResponse,
         NarrativeResponse,
         StockSummaryResponse,
+        SurfaceResponse,
+        VexResponse,
+        VolatilityResponse,
         VrpResponse,
     )
 
@@ -221,7 +228,7 @@ class FlashAlphaHistorical:
             params["type"] = type
         return self._get(f"/v1/optionquote/{_seg(ticker)}", params)
 
-    def surface(self, symbol: str, *, at: AtLike) -> dict:
+    def surface(self, symbol: str, *, at: AtLike) -> SurfaceResponse:
         """50×50 implied-vol surface grid (tenor × log-moneyness).
 
         Raises ``InsufficientDataError`` for historical dates with too few
@@ -238,7 +245,7 @@ class FlashAlphaHistorical:
         at: AtLike,
         expiration: str | None = None,
         min_oi: int | None = None,
-    ) -> dict:
+    ) -> GexResponse:
         """Gamma exposure by strike.
 
         Notes
@@ -253,21 +260,21 @@ class FlashAlphaHistorical:
             params["min_oi"] = min_oi
         return self._get(f"/v1/exposure/gex/{_seg(symbol)}", params)
 
-    def dex(self, symbol: str, *, at: AtLike, expiration: str | None = None) -> dict:
+    def dex(self, symbol: str, *, at: AtLike, expiration: str | None = None) -> DexResponse:
         """Delta exposure by strike."""
         params: dict[str, Any] = {"at": _format_at(at)}
         if expiration:
             params["expiration"] = expiration
         return self._get(f"/v1/exposure/dex/{_seg(symbol)}", params)
 
-    def vex(self, symbol: str, *, at: AtLike, expiration: str | None = None) -> dict:
+    def vex(self, symbol: str, *, at: AtLike, expiration: str | None = None) -> VexResponse:
         """Vanna exposure by strike."""
         params: dict[str, Any] = {"at": _format_at(at)}
         if expiration:
             params["expiration"] = expiration
         return self._get(f"/v1/exposure/vex/{_seg(symbol)}", params)
 
-    def chex(self, symbol: str, *, at: AtLike, expiration: str | None = None) -> dict:
+    def chex(self, symbol: str, *, at: AtLike, expiration: str | None = None) -> ChexResponse:
         """Charm exposure by strike."""
         params: dict[str, Any] = {"at": _format_at(at)}
         if expiration:
@@ -366,14 +373,14 @@ class FlashAlphaHistorical:
 
     # ── Volatility Analytics ────────────────────────────────────────
 
-    def volatility(self, symbol: str, *, at: AtLike) -> dict:
+    def volatility(self, symbol: str, *, at: AtLike) -> VolatilityResponse:
         """Comprehensive vol analysis — realized vol ladder (5/10/20/30/60d),
         IV-RV spreads, skew profiles, term structure, IV dispersion, GEX/theta
         by DTE bucket, put/call profile, OI concentration, multi-move
         hedging."""
         return self._get(f"/v1/volatility/{_seg(symbol)}", {"at": _format_at(at)})
 
-    def adv_volatility(self, symbol: str, *, at: AtLike) -> dict:
+    def adv_volatility(self, symbol: str, *, at: AtLike) -> AdvVolatilityResponse:
         """Advanced volatility — SVI parameters, forward prices, total variance
         surface, arbitrage flags, variance swap fair values, greek surfaces
         (vanna, charm, volga, speed)."""

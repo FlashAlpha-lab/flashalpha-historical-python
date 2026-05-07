@@ -91,6 +91,41 @@ from .types import (
     # ── ExposureLevels ──
     ExposureLevels,
     ExposureLevelsResponse,
+    # ── Volatility ──
+    VolatilityRealizedVol,
+    VolatilityIvRvSpreads,
+    VolatilitySkewProfile,
+    VolatilityTermStructure,
+    VolatilityIvDispersion,
+    VolatilityGexByDte,
+    VolatilityThetaByDte,
+    VolatilityPcByExpiry,
+    VolatilityPcByMoneyness,
+    VolatilityPutCallProfile,
+    VolatilityOiConcentration,
+    VolatilityHedgingScenario,
+    VolatilityLiquidity,
+    VolatilityResponse,
+    # ── AdvVolatility ──
+    AdvVolSviParam,
+    AdvVolForwardPrice,
+    AdvVolTotalVarianceSurface,
+    AdvVolArbitrageFlag,
+    AdvVolVarianceSwap,
+    AdvVolGreekSurface,
+    AdvVolGreeksSurfaces,
+    AdvVolatilityResponse,
+    # ── Surface ──
+    SurfaceResponse,
+    # ── Per-strike Exposure (GEX/DEX/VEX/CHEX) ──
+    GexStrikeRow,
+    GexResponse,
+    DexStrikeRow,
+    DexResponse,
+    VexStrikeRow,
+    VexResponse,
+    ChexStrikeRow,
+    ChexResponse,
 )
 
 __version__ = "0.4.0rc1"
@@ -167,4 +202,39 @@ __all__ = [
     # ── ExposureLevels ──
     "ExposureLevelsResponse",
     "ExposureLevels",
+    # ── Volatility ──
+    "VolatilityResponse",
+    "VolatilityRealizedVol",
+    "VolatilityIvRvSpreads",
+    "VolatilitySkewProfile",
+    "VolatilityTermStructure",
+    "VolatilityIvDispersion",
+    "VolatilityGexByDte",
+    "VolatilityThetaByDte",
+    "VolatilityPcByExpiry",
+    "VolatilityPcByMoneyness",
+    "VolatilityPutCallProfile",
+    "VolatilityOiConcentration",
+    "VolatilityHedgingScenario",
+    "VolatilityLiquidity",
+    # ── AdvVolatility ──
+    "AdvVolatilityResponse",
+    "AdvVolSviParam",
+    "AdvVolForwardPrice",
+    "AdvVolTotalVarianceSurface",
+    "AdvVolArbitrageFlag",
+    "AdvVolVarianceSwap",
+    "AdvVolGreekSurface",
+    "AdvVolGreeksSurfaces",
+    # ── Surface ──
+    "SurfaceResponse",
+    # ── Per-strike Exposure (GEX/DEX/VEX/CHEX) ──
+    "GexResponse",
+    "GexStrikeRow",
+    "DexResponse",
+    "DexStrikeRow",
+    "VexResponse",
+    "VexStrikeRow",
+    "ChexResponse",
+    "ChexStrikeRow",
 ]
