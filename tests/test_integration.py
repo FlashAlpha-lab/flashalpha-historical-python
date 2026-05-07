@@ -22,10 +22,32 @@ import pytest
 
 from flashalpha_historical import (
     Backtester,
+    ExposureLevels,
+    ExposureLevelsResponse,
     FlashAlphaHistorical,
     InvalidAtError,
+    Narrative,
+    NarrativeData,
+    NarrativeOiChange,
+    NarrativeResponse,
     NoCoverageError,
     NoDataError,
+    StockSummaryExposure,
+    StockSummaryFearAndGreed,
+    StockSummaryHedgingEstimate,
+    StockSummaryHedgingMove,
+    StockSummaryInterpretation,
+    StockSummaryMacro,
+    StockSummaryMacroIndex,
+    StockSummaryOptionsFlow,
+    StockSummaryPrice,
+    StockSummaryResponse,
+    StockSummarySkew25d,
+    StockSummaryVixFutures,
+    StockSummaryVixTermLevels,
+    StockSummaryVixTermStructure,
+    StockSummaryVolatility,
+    StockSummaryZeroDte,
     iter_days,
     iter_minutes,
     replay,
@@ -45,7 +67,7 @@ SPY_DATE = "2024-08-05"
 EXPECTED_SPOT = 516.435  # checked from probe; minute-stable
 SPOT_TOL = 1.0  # tolerate minor minute-bar refits
 
-REGIMES = {"positive_gamma", "negative_gamma", "neutral", "undetermined"}
+REGIMES = {"positive_gamma", "negative_gamma", "unknown"}
 # Both /v1/exposure/summary and /v1/exposure/zero-dte return lowercase.
 # (summary and zero-dte both return lowercase buy/sell directions.)
 HEDGING_DIRECTIONS = {"buy", "sell"}
@@ -418,7 +440,7 @@ class TestMaxPain:
         assert r["signal"] in ("bullish", "bearish", "neutral")
         assert isinstance(r["expiration"], str) and r["expiration"]
         assert isinstance(r["put_call_oi_ratio"], (int, float))
-        assert r["regime"] in ("positive_gamma", "negative_gamma", "neutral", "undetermined")
+        assert r["regime"] in ("positive_gamma", "negative_gamma", "unknown")
         assert isinstance(r["pin_probability"], int) and 0 <= r["pin_probability"] <= 100
 
         # ── distance ──
@@ -558,3 +580,158 @@ class TestReplay:
         assert all(r.output["regime"] in REGIMES for r in results)
         records = bt.to_records(results)
         assert {"at", "underlying_price", "regime", "vrp"} <= set(records[0])
+
+
+# ── Field-walk coverage for the rc.4 POCOs ──────────────────────────────────
+#
+# These tests use TypedDict ``__annotations__`` introspection to walk every
+# declared field on a response model and assert the historical replay
+# response actually carries it. Mirrors the live-SDK field-walk tests in
+# flashalpha-python so the two packages stay in lockstep on shape coverage.
+# Historical has no ``greeks()`` method, so the pricing field-walk lives only
+# in the live SDK.
+
+# TypedDicts whose nested ``__annotations__`` we want to recurse into.
+# Anything else (primitives, Literals, Optional[primitive], List[...]) is a leaf.
+_WALKABLE_TYPED_DICTS = {
+    StockSummaryPrice,
+    StockSummarySkew25d,
+    StockSummaryVolatility,
+    StockSummaryOptionsFlow,
+    StockSummaryInterpretation,
+    StockSummaryHedgingMove,
+    StockSummaryHedgingEstimate,
+    StockSummaryZeroDte,
+    StockSummaryExposure,
+    StockSummaryMacroIndex,
+    StockSummaryVixTermLevels,
+    StockSummaryVixTermStructure,
+    StockSummaryVixFutures,
+    StockSummaryFearAndGreed,
+    StockSummaryMacro,
+    NarrativeData,
+    NarrativeOiChange,
+}
+
+
+def _is_walkable_typeddict(ann) -> bool:
+    return ann in _WALKABLE_TYPED_DICTS
+
+
+def _assert_all_keys_populated(prefix: str, td_class, value: dict) -> None:
+    """Walk every key declared on ``td_class.__annotations__`` against ``value``.
+
+    For each declared field:
+      * The key must be present in the response dict.
+      * The value must not be ``None``.
+      * If the annotation is a nested TypedDict in ``_WALKABLE_TYPED_DICTS``,
+        recurse into it.
+
+    Lists, primitives, Literals and ``Optional[...]`` envelopes are treated
+    as leaves.
+    """
+    annotations = getattr(td_class, "__annotations__", {})
+    assert annotations, f"{prefix}: TypedDict {td_class.__name__} has no __annotations__"
+    for key, ann in annotations.items():
+        assert key in value, f"{prefix}.{key} missing from response"
+        v = value[key]
+        assert v is not None, f"{prefix}.{key} is None"
+        if _is_walkable_typeddict(ann):
+            assert isinstance(v, dict), f"{prefix}.{key} expected dict, got {type(v).__name__}"
+            _assert_all_keys_populated(f"{prefix}.{key}", ann, v)
+
+
+class TestFieldWalkRc4:
+    """Field-walk coverage for rc.4 response shapes.
+
+    Iterates every key declared on the TypedDict and asserts the live
+    historical response carries it. Catches both ``StockSummaryResponse``
+    drift (server adds a field, SDK forgets to type it) and silent-null
+    responses (server returns the key with ``None`` when it shouldn't).
+    """
+
+    def test_stock_summary_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``StockSummaryResponse`` (and walkable nested
+        TypedDicts) must be populated on a SPY snapshot at SPY_AT.
+
+        ``exposure`` is Optional — only walk if present (always present at
+        SPY_AT, which is a known-good RTH minute on a high-OI day).
+        """
+        result = hx.stock_summary("SPY", at=SPY_AT)
+
+        for key in StockSummaryResponse.__annotations__:
+            assert key in result, f"stock_summary.{key} missing from response"
+
+        assert result["symbol"] == "SPY"
+        assert isinstance(result["as_of"], str) and result["as_of"]
+        assert result["market_open"] is not None
+
+        _assert_all_keys_populated("price", StockSummaryPrice, result["price"])
+        _assert_all_keys_populated("volatility", StockSummaryVolatility, result["volatility"])
+        _assert_all_keys_populated("options_flow", StockSummaryOptionsFlow, result["options_flow"])
+        _assert_all_keys_populated("macro", StockSummaryMacro, result["macro"])
+
+        if result.get("exposure") is not None:
+            _assert_all_keys_populated("exposure", StockSummaryExposure, result["exposure"])
+
+    def test_narrative_every_field_declared_in_typeddict(self, hx):
+        """Every key declared on ``NarrativeResponse``, the ``narrative`` block,
+        and ``narrative.data`` must be present at SPY_AT.
+
+        Narrative is Growth+; skip on tier_restricted rather than fail.
+        """
+        try:
+            result = hx.narrative("SPY", at=SPY_AT)
+        except Exception as exc:  # noqa: BLE001 — tier check needs broad catch
+            if "tier_restricted" in str(exc).lower() or "403" in str(exc):
+                pytest.skip(f"narrative requires Growth+: {exc}")
+            raise
+
+        for key in NarrativeResponse.__annotations__:
+            assert key in result, f"narrative.{key} missing from response"
+        assert result["symbol"] == "SPY"
+        assert isinstance(result["as_of"], str) and result["as_of"]
+        assert result["underlying_price"] is not None
+
+        narrative = result["narrative"]
+        assert isinstance(narrative, dict)
+        for key in Narrative.__annotations__:
+            assert key in narrative, f"narrative.narrative.{key} missing"
+            assert narrative[key] is not None, f"narrative.narrative.{key} is None"
+
+        for key in ("regime", "gex_change", "key_levels", "flow", "vanna", "charm", "zero_dte", "outlook"):
+            assert isinstance(narrative[key], str) and narrative[key], f"narrative.{key} empty"
+
+        data = narrative["data"]
+        _assert_all_keys_populated("narrative.data", NarrativeData, data)
+
+        # top_oi_changes is List[NarrativeOiChange]. If non-empty, validate one element shape.
+        top = data["top_oi_changes"]
+        assert isinstance(top, list)
+        if top:
+            _assert_all_keys_populated("narrative.data.top_oi_changes[0]", NarrativeOiChange, top[0])
+
+    def test_exposure_levels_every_field_declared_in_typeddict(self, hx):
+        """Every key on ``ExposureLevelsResponse`` and ``ExposureLevels`` must
+        be present at SPY_AT.
+
+        Specifically asserts ``zero_dte_magnet`` is in ``result["levels"]``
+        and non-None — SPY_AT (2024-08-05 15:30 ET) had a same-day expiry.
+        This assertion is missing from the existing field-coverage check
+        in both the live and historical repos.
+        """
+        result = hx.exposure_levels("SPY", at=SPY_AT)
+
+        for key in ExposureLevelsResponse.__annotations__:
+            assert key in result, f"exposure_levels.{key} missing from response"
+        assert result["symbol"] == "SPY"
+        assert isinstance(result["as_of"], str) and result["as_of"]
+        assert result["underlying_price"] is not None
+
+        levels = result["levels"]
+        for key in ExposureLevels.__annotations__:
+            assert key in levels, f"exposure_levels.levels.{key} missing"
+
+        # SPY had a same-day expiry on 2024-08-05; zero_dte_magnet MUST be populated.
+        assert levels["zero_dte_magnet"] is not None, "levels.zero_dte_magnet is None on SPY @ SPY_AT"
+        assert isinstance(levels["zero_dte_magnet"], (int, float))

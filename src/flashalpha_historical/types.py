@@ -183,7 +183,10 @@ class VrpTermItem(TypedDict, total=False):
 class VrpGexConditioned(TypedDict, total=False):
     """VRP harvest score conditioned on the prevailing dealer-gamma regime."""
 
-    regime: Optional[str]
+    # Gamma regime at this snapshot. ``"positive_gamma"`` |
+    # ``"negative_gamma"`` | ``"unknown"`` (when there's insufficient data
+    # to classify).
+    regime: Optional[Literal["positive_gamma", "negative_gamma", "unknown"]]
     # 0-100 composite. >70 = strong harvest signal; <30 = avoid.
     harvest_score: Optional[float]
     interpretation: Optional[str]
@@ -202,7 +205,8 @@ class VrpRegime(TypedDict, total=False):
     ``net_gex`` lives here, NOT at the top level.
     """
 
-    gamma: Optional[str]
+    # ``"positive_gamma"`` | ``"negative_gamma"`` | ``"unknown"``.
+    gamma: Optional[Literal["positive_gamma", "negative_gamma", "unknown"]]
     # ``None`` on historical with insufficient warmup.
     vrp_regime: Optional[str]
     # Net dealer gamma exposure in dollars per 1% spot move.
@@ -797,7 +801,10 @@ class NarrativeData(TypedDict, total=False):
     gamma_flip: Optional[float]
     call_wall: Optional[float]
     put_wall: Optional[float]
-    regime: Optional[str]
+    # Dealer-positioning regime classification. ``"positive_gamma"`` |
+    # ``"negative_gamma"`` | ``"unknown"`` (same enum as
+    # ``exposure_summary.regime``).
+    regime: Optional[Literal["positive_gamma", "negative_gamma", "unknown"]]
     zero_dte_pct: Optional[float]
     top_oi_changes: List[NarrativeOiChange]
 
