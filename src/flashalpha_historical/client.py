@@ -10,7 +10,7 @@ Base URL: ``https://historical.flashalpha.com``
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
 import requests
@@ -27,6 +27,16 @@ from .exceptions import (
     SymbolNotFoundError,
     TierRestrictedError,
 )
+
+if TYPE_CHECKING:
+    from .types import (
+        ExposureLevelsResponse,
+        ExposureSummaryResponse,
+        MaxPainResponse,
+        NarrativeResponse,
+        StockSummaryResponse,
+        VrpResponse,
+    )
 
 BASE_URL = "https://historical.flashalpha.com"
 
@@ -264,21 +274,21 @@ class FlashAlphaHistorical:
             params["expiration"] = expiration
         return self._get(f"/v1/exposure/chex/{_seg(symbol)}", params)
 
-    def exposure_summary(self, symbol: str, *, at: AtLike) -> dict:
+    def exposure_summary(self, symbol: str, *, at: AtLike) -> ExposureSummaryResponse:
         """Full composite dashboard — net GEX/DEX/VEX/CHEX, gamma flip, regime,
         ±1% hedging estimates, 0DTE contribution, interpretations."""
         return self._get(
             f"/v1/exposure/summary/{_seg(symbol)}", {"at": _format_at(at)}
         )
 
-    def exposure_levels(self, symbol: str, *, at: AtLike) -> dict:
+    def exposure_levels(self, symbol: str, *, at: AtLike) -> ExposureLevelsResponse:
         """Key technical levels — gamma flip, call/put walls, max +/- gamma,
         highest-OI strike, 0DTE magnet."""
         return self._get(
             f"/v1/exposure/levels/{_seg(symbol)}", {"at": _format_at(at)}
         )
 
-    def narrative(self, symbol: str, *, at: AtLike) -> dict:
+    def narrative(self, symbol: str, *, at: AtLike) -> NarrativeResponse:
         """Verbal analysis + prior-day GEX comparison + VIX context.
 
         ``gex_change`` pulls the previous trading day's net GEX; ``vix`` is
@@ -327,7 +337,7 @@ class FlashAlphaHistorical:
         *,
         at: AtLike,
         expiration: str | None = None,
-    ) -> dict:
+    ) -> MaxPainResponse:
         """Strike-by-strike pain curve, pin probability, dealer alignment."""
         params: dict[str, Any] = {"at": _format_at(at)}
         if expiration:
@@ -336,7 +346,7 @@ class FlashAlphaHistorical:
 
     # ── Stock Summary (Composite) ───────────────────────────────────
 
-    def stock_summary(self, symbol: str, *, at: AtLike) -> dict:
+    def stock_summary(self, symbol: str, *, at: AtLike) -> StockSummaryResponse:
         """Full composite snapshot — price, vol (ATM IV, HV20, HV60, VRP, 25d
         skew, IV term), options flow, exposure block, macro context.
 
@@ -373,7 +383,7 @@ class FlashAlphaHistorical:
 
     # ── VRP ─────────────────────────────────────────────────────────
 
-    def vrp(self, symbol: str, *, at: AtLike) -> dict:
+    def vrp(self, symbol: str, *, at: AtLike) -> VrpResponse:
         """Volatility Risk Premium dashboard.
 
         Percentile history is **date-bounded** — VRP percentile and z-score
