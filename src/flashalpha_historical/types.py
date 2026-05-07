@@ -1387,18 +1387,18 @@ class ChexResponse(TypedDict, total=False):
 class AccountResponse(TypedDict, total=False):
     """Account info & quota from ``GET /v1/account``.
 
-    Returns the caller's plan tier, the day's request quota, how much has
-    been consumed, and when the counter resets.
+    Note ``daily_limit`` and ``remaining`` are **strings, not ints** —
+    numeric (e.g. ``"1000"``) on bounded plans, literal ``"unlimited"``
+    on Alpha / Enterprise tiers. Only ``usage_today`` is a true integer.
     """
 
     user_id: Optional[str]
     email: Optional[str]
-    # Plan tier (e.g. ``"free"``, ``"basic"``, ``"growth"``, ``"alpha"``).
     plan: Optional[str]
-    daily_limit: Optional[int]
+    # Numeric string on bounded plans; ``"unlimited"`` on uncapped tiers.
+    daily_limit: Optional[str]
     usage_today: Optional[int]
-    remaining: Optional[int]
-    # ISO timestamp at which ``usage_today`` resets to zero.
+    remaining: Optional[str]
     resets_at: Optional[str]
 
 
