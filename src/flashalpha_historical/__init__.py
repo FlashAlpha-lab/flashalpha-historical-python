@@ -138,7 +138,7 @@ from .types import (
     ScreenerResponse,
 )
 
-__version__ = "0.4.0rc1"
+__version__ = "0.4.0rc12"
 __all__ = [
     "FlashAlphaHistorical",
     "BASE_URL",
