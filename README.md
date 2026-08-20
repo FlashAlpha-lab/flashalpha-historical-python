@@ -3,13 +3,13 @@
 Python SDK for the **FlashAlpha Historical API** — point-in-time replay of
 every live analytics endpoint. Ask what GEX, gamma flip, VRP, narrative, max
 pain, or the full stock summary looked like at any **minute back to
-2018-04-16**, in the same response shape as the live API.
+2017-01-03**, in the same response shape as the live API.
 
-Coverage: SPY 2018-04-16 → today, with daily extensions; more symbols
+Coverage: SPY 2017-01-03 → today, with daily extensions; more symbols
 added on demand.
 
-> **Point-in-time replay since 2018.** Backtest dealer positioning (GEX, VRP,
-> vanna/charm, max pain) at any minute since 2018-04-16, then trade the same
+> **Point-in-time replay since 2017.** Backtest dealer positioning (GEX, VRP,
+> vanna/charm, max pain) at any minute since 2017-01-03, then trade the same
 > endpoints live. No look-ahead, no training-serving skew. The Historical API
 > is an **Alpha tier** capability.
 
@@ -165,7 +165,7 @@ MIT
 ## Get access
 
 The Historical API requires the **Alpha tier ($1,499/mo)**: the only public source
-of aggregate vanna/charm exposure and point-in-time replay since 2018.
+of aggregate vanna/charm exposure and point-in-time replay since 2017.
 
 Quant teams, prop desks, and vol funds:
 **[flashalpha.com/for-quant-teams](https://flashalpha.com/for-quant-teams?utm_source=github&utm_medium=readme&utm_campaign=repo-flashalpha-historical-python)**

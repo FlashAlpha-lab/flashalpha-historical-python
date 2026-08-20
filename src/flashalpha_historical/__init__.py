@@ -1,7 +1,7 @@
 """FlashAlpha Historical Python SDK.
 
 Point-in-time replay of every live FlashAlpha analytics endpoint. SPY
-2018-04-16 → present, extended forward as new data is published; more symbols
+2017-01-03 → present, extended forward as new data is published; more symbols
 added on demand.
 
 Quickstart

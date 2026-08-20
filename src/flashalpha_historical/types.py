@@ -100,7 +100,7 @@ class ExposureSummaryResponse(TypedDict, total=False):
 #   - ``response["net_gex"]`` ✗ → use ``response["regime"]["net_gex"]``
 #
 # On historical responses with insufficient warm-up (``at`` near
-# 2018-04-16), ``vrp.z_score``, ``vrp.percentile``, ``regime.vrp_regime``,
+# 2017-01-03), ``vrp.z_score``, ``vrp.percentile``, ``regime.vrp_regime``,
 # ``strategy_scores``, and ``net_harvest_score`` are all ``None``.
 
 
@@ -135,14 +135,14 @@ class VrpCore(TypedDict, total=False):
     vrp_30d: Optional[float]
     # Z-score of the current 20-day VRP vs its trailing ``history_days``-
     # day window. ``None`` when ``at`` is close to the dataset start
-    # (2018-04-16) and there's insufficient history. Use percentile or
+    # (2017-01-03) and there's insufficient history. Use percentile or
     # raw vrp_20d in that case.
     z_score: Optional[float]
     # Percentile rank (0-100) of the current VRP within the trailing
     # window. ``None`` when ``history_days`` is too small.
     percentile: Optional[int]
     # Number of trading days in the trailing percentile/z-score window.
-    # Scales with how far past 2018-04-16 the ``at`` timestamp is. When
+    # Scales with how far past 2017-01-03 the ``at`` timestamp is. When
     # this is small (<30), treat ``z_score`` and ``percentile`` as noise.
     history_days: Optional[int]
 
@@ -742,7 +742,7 @@ class StockSummaryResponse(TypedDict, total=False):
       dataset served — typically within ±1 minute, occasionally further
       around feed gaps. Always read ``as_of`` rather than echoing your
       request ``at`` for downstream timestamping.
-    - On dates near the dataset start (2018-04-16), HV ladders may
+    - On dates near the dataset start (2017-01-03), HV ladders may
       have insufficient warmup and individual fields will be ``None``.
       ``warnings``-style errors are surfaced via the response shape's
       ``Optional`` fields, not a separate warnings list on this

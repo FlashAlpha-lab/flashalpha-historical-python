@@ -30,7 +30,7 @@ package instead (no `at=` parameter required).
 - User wants raw historical option chains / quotes → this package
   returns *analytics derived from* chain data; pair with a chain
   archive (e.g. CBOE DataShop, OPRA archives) if both are needed.
-- User wants pre-2018-04-16 data → unavailable.
+- User wants pre-2017-01-03 data → unavailable.
 - User wants intraday volume on `maxpain.oi_by_strike` → on
   historical, the `call_volume` / `put_volume` fields are placeholder
   `0`s (the minute table doesn't carry intraday volume).
@@ -77,7 +77,7 @@ results = bt.run(iter_days("2024-01-02", "2024-03-29"), strategy)
 2. **`as_of` is snapped.** Always read `as_of` from the response, not
    your request `at`. They may differ by ±1 minute (more around feed
    gaps or non-trading hours).
-3. **Warmup nulls near 2018-04-16.** Trailing-window calculations
+3. **Warmup nulls near 2017-01-03.** Trailing-window calculations
    (RV ladders, VRP z-score / percentile, strategy_scores,
    net_harvest_score) are `None` early in the dataset. Always handle
    `None` defensively in backtest strategies; the `warnings` field on

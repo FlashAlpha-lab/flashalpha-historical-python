@@ -1,7 +1,7 @@
 # FlashAlpha Historical — Python SDK
 
 > Point-in-time replay of every live FlashAlpha analytics endpoint.
-> SPY 2018-04-16 → present, extended forward as new data is published;
+> SPY 2017-01-03 → present, extended forward as new data is published;
 > additional symbols on demand.
 
 This is the historical (point-in-time) Python SDK. For current-minute
@@ -12,7 +12,7 @@ shapes, no `at=` parameter required.
 
 - **Backtesting strategies that depend on dealer flow.** Replay the
   exact GEX / gamma-flip / hedging-flow snapshot a strategy would
-  have seen at any minute since 2018-04-16, with no future leakage.
+  have seen at any minute since 2017-01-03, with no future leakage.
 - **"What did the chain look like on date X?"** One call per minute,
   same response shape as live.
 - **Event studies.** Pull dealer-positioning snapshots around
@@ -77,7 +77,7 @@ nearest available minute.
 - `as_of` is SNAPPED. Always read `as_of` from the response — never
   echo your request `at` for downstream timestamping; they may differ
   by ±1 minute (more around feed gaps).
-- Near the dataset start (2018-04-16), trailing-window calculations
+- Near the dataset start (2017-01-03), trailing-window calculations
   (RV ladders, VRP percentile, z-score) may have insufficient warmup
   and individual fields will be `None`. The `warnings` field on VRP
   responses surfaces these — e.g. `"insufficient_history_for_zscore"`.
