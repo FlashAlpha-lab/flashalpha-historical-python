@@ -76,7 +76,7 @@ Every response carries two objects in the same shape. `archive_as_of` is the vin
 the archive rows actually replayed for the timestamp requested - equity and index spot,
 their option chains, futures and futures options, the classified trade tape, settled open
 interest, and the macro series, each reported separately because they are stored and
-replayed independently. `data_as_of` is the live-feed counterpart and is all `null` here,
+replayed independently. `data_as_of` is the live-feed counterpart and reports `null` for every feed here,
 because a replay node reads the archive and consumes no live feed; it is still returned so
 the envelope has one shape across the live and historical services, and so a historical
 response cannot be mistaken for a live one. `endpoint_version` identifies the deployment.

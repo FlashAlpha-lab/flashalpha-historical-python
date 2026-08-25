@@ -59,7 +59,7 @@ typed rather than untyped passthroughs.
 | `node` | Which node answered | Nodes hydrate independently |
 | `equity_feed` | Equity and ETF spot quotes | seconds, during market hours |
 | `equity_options_feed` | Equity and ETF option quotes | seconds, during market hours |
-| `index_feed` | Index spot (SPX, NDX, RUT, VIX) | seconds, during market hours |
+| `index_feed` | Index spot (SPX, RUT, VIX and the other index roots) | seconds, during market hours |
 | `index_options_feed` | Index option quotes | seconds, during market hours |
 | `futures_feed` | Futures prices | seconds, during the futures session |
 | `futures_options_feed` | Futures option quotes | seconds, during the futures session |
@@ -69,7 +69,7 @@ typed rather than untyped passthroughs.
 
 Historical responses carry a second object, `archive_as_of`, in the same shape: the
 vintage of the archive rows actually replayed for the timestamp you requested. Its
-`data_as_of` is all `null`, because a replay node reads the archive and consumes no
+every feed in `data_as_of` is `null`, because a replay node reads the archive and consumes no
 live feed.
 
 `archive_as_of` is what makes an archive gap detectable. Request a moment with no row
@@ -95,9 +95,6 @@ whose inputs precede the requested instant by more than the study tolerates.
 - **`data_as_of` is not `as_of`.** `as_of` is response-generation time or the newest
   contract in the payload, depending on the endpoint. `data_as_of` describes the feeds
   behind it.
-
-Endpoints returning a bare JSON array carry the same information in the
-`X-Data-As-Of` and `X-Endpoint-Version` response headers.
 
 Full reference: <https://flashalpha.com/docs/lab-api-overview#response-envelope> and the
 methodology whitepaper at <https://flashalpha.com/methodology#freshness-reporting>.
