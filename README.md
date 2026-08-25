@@ -48,7 +48,7 @@ gex = fa.gex("SPY", at="2024-03-15T14:30:00Z")
 gex["archive_as_of"]["equity_options_feed"]  # '2024-03-15T14:29:58.100Z'  the rows replayed
 gex["archive_as_of"]["oi_feed"]              # '2024-03-14T20:00:00.000Z'  prior session's close
 gex["data_as_of"]["equity_options_feed"]     # None - a replay node consumes no live feed
-gex["endpoint_version"]                      # '2026.08.25'
+gex["endpoint_version"]                      # the deployment that answered
 ```
 
 `DataAsOf` and `ArchiveAsOf` are exported from the package root, so both objects are
