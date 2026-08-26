@@ -42,6 +42,8 @@ from .replay import (
     replay,
 )
 from .types import (
+    ArchiveAsOf,
+    DataAsOf,
     ExposureSummaryExposures,
     ExposureSummaryHedgingEstimate,
     ExposureSummaryHedgingMove,
@@ -140,6 +142,8 @@ from .types import (
 
 __version__ = "0.4.0rc12"
 __all__ = [
+    "ArchiveAsOf",
+    "DataAsOf",
     "FlashAlphaHistorical",
     "BASE_URL",
     # exceptions

@@ -24,6 +24,42 @@ point-in-time replay of options dealer positioning. Concrete triggers:
 For current-minute analytics, recommend the companion `flashalpha`
 package instead (no `at=` parameter required).
 
+## Data freshness: gate conclusions on `archive_as_of`
+
+Replay responses carry **two** provenance objects. `data_as_of` reports `null` for every
+feed - a replay node reads the archive and consumes no live feed - with `node` still
+populated. That all-null shape is how you tell a replayed response from a live one.
+
+The load-bearing object is **`archive_as_of`**: the vintage of the archive rows actually
+replayed for the timestamp you requested, keyed identically to `data_as_of`.
+
+**Gap detection is the whole point.** Request a moment with no stored row and the query
+returns the most recent *earlier* row. Nothing else in the response distinguishes the two,
+so a backtest can carry stale inputs without ever seeing an error.
+
+**Rule:** compare each `archive_as_of` feed you depend on against the instant you asked
+for, and drop or flag observations whose inputs precede it by more than your study
+tolerates.
+
+| Call | Feeds that answer it |
+|---|---|
+| Equity/ETF exposure, greeks, max pain, levels | `equity_feed`, `equity_options_feed`, `oi_feed` |
+| Index (SPX, RUT, VIX...) | `index_feed`, `index_options_feed`, `oi_feed` |
+| Futures | `futures_feed`, `futures_options_feed` |
+| Flow replay | `flow_feed` |
+| Macro context | `macro_feed` |
+
+A feed the call did not read is `null` and is irrelevant to that answer.
+
+**`oi_feed` trailing by a session is correct, not a gap.** Settled open interest is
+published once per session, so the newest figure that existed at any intraday moment is the
+prior close - a Monday timestamp replays Friday's figure.
+
+**Timestamps are UTC ISO-8601 instants**, so a request expressed in ET comes back converted.
+Compare them; do not parse them for meaning.
+
+**`endpoint_version` is opaque deployment metadata.** Do not parse it as semver or order it.
+
 ## When NOT to recommend FlashAlpha Historical
 
 - User wants live current data → use the `flashalpha` package.

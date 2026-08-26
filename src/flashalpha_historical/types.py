@@ -30,6 +30,60 @@ from typing import Any, Dict, List, Literal, Optional, TypedDict
 # consistently.
 
 
+class DataAsOf(TypedDict, total=False):
+    """When each upstream feed last delivered to the node that served the response.
+
+    Present on every successful response. On this replay service every feed is
+    ``None``: a replay node reads the archive and consumes no live feed. The object
+    is still returned so the envelope has one shape across the live and historical
+    services, and so a response cannot be mistaken for a live one.
+
+    The vintage that matters here is :class:`ArchiveAsOf`, carried alongside it as
+    ``archive_as_of``.
+    """
+
+    node: str
+    equity_feed: Optional[str]
+    equity_options_feed: Optional[str]
+    index_feed: Optional[str]
+    index_options_feed: Optional[str]
+    futures_feed: Optional[str]
+    futures_options_feed: Optional[str]
+    flow_feed: Optional[str]
+    oi_feed: Optional[str]
+    macro_feed: Optional[str]
+
+
+class ArchiveAsOf(TypedDict, total=False):
+    """The vintage of the archive rows actually replayed for the timestamp requested.
+
+    Same shape as :class:`DataAsOf` - the key order is a contract shared with the live
+    service - but the values describe stored rows rather than live feeds. A field is
+    ``None`` when the response did not read that class of data.
+
+    This is what makes an archive gap detectable. Request a moment with no row and the
+    query returns the most recent earlier row; nothing else in the response
+    distinguishes the two. Point-in-time work should read this and drop or flag
+    observations whose inputs precede the requested instant by more than the study
+    tolerates.
+
+    ``oi_feed`` trailing by a session is correct rather than a gap: settled open
+    interest is published once per session, so the newest figure that existed at any
+    intraday moment is the prior close.
+    """
+
+    node: str
+    equity_feed: Optional[str]
+    equity_options_feed: Optional[str]
+    index_feed: Optional[str]
+    index_options_feed: Optional[str]
+    futures_feed: Optional[str]
+    futures_options_feed: Optional[str]
+    flow_feed: Optional[str]
+    oi_feed: Optional[str]
+    macro_feed: Optional[str]
+
+
 class ExposureSummaryExposures(TypedDict, total=False):
     # Field-level Optional matches C#/Go/Java (defensive — API may return null
     # under unobserved edge conditions even when the parent block is present).
@@ -102,6 +156,11 @@ class ExposureSummaryResponse(TypedDict, total=False):
 # On historical responses with insufficient warm-up (``at`` near
 # 2017-01-03), ``vrp.z_score``, ``vrp.percentile``, ``regime.vrp_regime``,
 # ``strategy_scores``, and ``net_harvest_score`` are all ``None``.
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
 
 
 class VrpCore(TypedDict, total=False):
@@ -304,6 +363,11 @@ class VrpResponse(TypedDict, total=False):
 # carry intraday volume). Use ``call_oi`` / ``put_oi`` for the historical
 # positioning view; the volume fields are placeholders for shape parity.
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class MaxPainDistance(TypedDict, total=False):
     """Distance from spot to the max-pain strike."""
@@ -503,6 +567,11 @@ class MaxPainResponse(TypedDict, total=False):
 #   - On stock_summary, ``hedging_estimate.spot_*_1pct.dealer_shares``
 #     is a MAGNITUDE; the ``direction`` field carries the sign.
 #   - On zero-dte, ``dealer_shares_to_trade`` is signed.
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
 
 
 class StockSummaryPrice(TypedDict, total=False):
@@ -778,6 +847,11 @@ class StockSummaryResponse(TypedDict, total=False):
 # endpoint — narrative strings safe verbatim, paired with the numeric
 # data block that backs them.
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class NarrativeOiChange(TypedDict, total=False):
     """One row of the "top OI changes vs prior session" leaderboard."""
@@ -850,6 +924,11 @@ class NarrativeResponse(TypedDict, total=False):
 #
 # Typed model for ``GET /v1/exposure/levels/{symbol}?at=...``.
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class ExposureLevels(TypedDict, total=False):
     """The seven canonical dealer-flow levels for a symbol at ``as_of``."""
@@ -895,6 +974,11 @@ class ExposureLevelsResponse(TypedDict, total=False):
 # Historical-specific gap: ``put_call_profile.by_expiry[*].call_volume`` /
 # ``put_volume`` and ``pc_ratio_volume`` are always ``0`` / ``null`` — the
 # minute table doesn't carry intraday volume.
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
 
 
 class VolatilityRealizedVol(TypedDict, total=False):
@@ -1091,6 +1175,11 @@ class VolatilityResponse(TypedDict, total=False):
 # arbitrage flags, variance-swap fair values, and the higher-order Greek
 # surfaces (vanna, charm, volga, speed).
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class AdvVolSviParam(TypedDict, total=False):
     """One per-expiry row of fitted SVI parameters.
@@ -1219,6 +1308,11 @@ class AdvVolatilityResponse(TypedDict, total=False):
 # 50×50 implied-vol grid. May raise ``InsufficientDataError`` for historical
 # dates with too few liquid OTM contracts to fill the grid.
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class SurfaceResponse(TypedDict, total=False):
     """Implied-vol surface grid from ``GET /v1/surface/{symbol}?at=...``.
@@ -1262,6 +1356,11 @@ class SurfaceResponse(TypedDict, total=False):
 #   - ``call_oi_change`` / ``put_oi_change`` always ``None`` (no prior-day
 #     OI join yet).
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class GexStrikeRow(TypedDict, total=False):
     """One per-strike row of the GEX breakdown.
@@ -1303,6 +1402,11 @@ class GexResponse(TypedDict, total=False):
     net_gex_label: Optional[str]
     strikes: List[GexStrikeRow]
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class DexStrikeRow(TypedDict, total=False):
     """One per-strike row of the DEX breakdown."""
@@ -1321,6 +1425,11 @@ class DexResponse(TypedDict, total=False):
     as_of: str
     net_dex: Optional[float]
     strikes: List[DexStrikeRow]
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
 
 
 class VexStrikeRow(TypedDict, total=False):
@@ -1345,6 +1454,11 @@ class VexResponse(TypedDict, total=False):
     net_vex: Optional[float]
     vex_interpretation: Optional[str]
     strikes: List[VexStrikeRow]
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
 
 
 class ChexStrikeRow(TypedDict, total=False):
@@ -1383,6 +1497,11 @@ class ChexResponse(TypedDict, total=False):
 #   - ``GET /v1/options/{t}``  — option-chain metadata (expirations + strikes)
 #   - ``GET /health``          — health check (public)
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class AccountResponse(TypedDict, total=False):
     """Account info & quota from ``GET /v1/account``.
@@ -1401,6 +1520,11 @@ class AccountResponse(TypedDict, total=False):
     remaining: Optional[str]
     resets_at: Optional[str]
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class TickersResponse(TypedDict, total=False):
     """List of available stock tickers from ``GET /v1/tickers``.
@@ -1415,6 +1539,11 @@ class TickersResponse(TypedDict, total=False):
     tickers: List[str]
     count: Optional[int]
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class SymbolsResponse(TypedDict, total=False):
     """Currently queried symbols with live data from ``GET /v1/symbols``."""
@@ -1425,6 +1554,11 @@ class SymbolsResponse(TypedDict, total=False):
     note: Optional[str]
     # ISO timestamp of the last refresh of the symbol list.
     last_updated: Optional[str]
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
 
 
 class OptionsMetaExpiration(TypedDict, total=False):
@@ -1447,6 +1581,11 @@ class OptionsMetaResponse(TypedDict, total=False):
     expiration_count: Optional[int]
     total_contracts: Optional[int]
 
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
+
 
 class HealthResponse(TypedDict, total=False):
     """Public health-check response from ``GET /health``."""
@@ -1462,6 +1601,11 @@ class HealthResponse(TypedDict, total=False):
 # rows. Rows are intentionally untyped — ``select`` and ``formulas`` make
 # the row shape user-controlled, so the canonical type is
 # ``List[Dict[str, Any]]``.
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
 
 
 class ScreenerMeta(TypedDict, total=False):
@@ -1488,3 +1632,8 @@ class ScreenerResponse(TypedDict, total=False):
     meta: ScreenerMeta
     # Rows are select-dependent; left untyped. Read with ``row["symbol"]`` etc.
     data: List[Dict[str, Any]]
+
+    # Response envelope, present on every successful response.
+    endpoint_version: str
+    data_as_of: DataAsOf
+    archive_as_of: ArchiveAsOf
