@@ -24,8 +24,15 @@ for at, snap in replay(
 ):
     spot = snap["underlying_price"]
     flip = snap["gamma_flip"]
-    gap = spot - flip if (spot is not None and flip is not None) else None
     regime = snap["regime"]
     flag = " ⚑" if last_regime is not None and regime != last_regime else ""
-    print(f"{at:<20} {spot:>8.2f} {flip:>8.2f} {gap:>7.2f} {regime:>17}{flag}")
+    # No flip is published for most chains. ``gamma_flip`` is then null and
+    # ``gamma_flip_status`` carries the reason code, so don't format it as a
+    # number -- print the reason instead.
+    if flip is None:
+        flip_s = gap_s = "-"
+        flag += f"  ({snap.get('gamma_flip_status') or 'unavailable'})"
+    else:
+        flip_s, gap_s = f"{flip:.2f}", f"{spot - flip:.2f}"
+    print(f"{at:<20} {spot:>8.2f} {flip_s:>8} {gap_s:>7} {regime:>17}{flag}")
     last_regime = regime

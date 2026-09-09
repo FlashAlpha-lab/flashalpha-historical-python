@@ -19,6 +19,8 @@ print(f"  net GEX:     ${snap['exposures']['net_gex']:,}")
 print(f"  net DEX:     ${snap['exposures']['net_dex']:,}")
 print(f"  net VEX:     ${snap['exposures']['net_vex']:,}")
 print(f"  gamma flip:  {snap['gamma_flip']}")
+# gamma_flip is null for most chains -- gamma_flip_status says why.
+print(f"  flip status: {snap.get('gamma_flip_status')}")
 print()
 print("interpretation:")
 for k, v in snap["interpretation"].items():
