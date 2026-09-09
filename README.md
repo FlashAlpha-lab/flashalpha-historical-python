@@ -138,12 +138,25 @@ from flashalpha_historical import iter_minutes, replay
 # Walk every 15 minutes through one trading day
 for at, snap in replay(hx, "exposure_summary", "SPY",
                        iter_minutes("2025-01-15", "2025-01-15", step_minutes=15)):
-    print(at, snap["regime"], snap["gamma_flip"], snap["exposures"]["net_gex"])
+    # gamma_flip is None unless gamma_flip_status == "available".
+    print(at, snap["regime"], snap["gamma_flip"], snap["gamma_flip_status"],
+          snap["exposures"]["net_gex"])
 ```
 
 > **Quota note:** every call counts against your daily plan quota (shared
 > with the live API). 1-minute replay = 390 calls per analytic per day —
 > coarsen with `step_minutes=15` or `step_minutes=30` for development loops.
+
+> **`gamma_flip` is nullable.** A gamma flip is only published when the level is
+> well-determined, which is a minority of snapshots. When it is withheld,
+> `gamma_flip` is `null`, `regime` is `"unknown"`, and `gamma_flip_status` carries
+> a reason code (`no_boundary`, `insufficient_local_coverage`,
+> `insufficient_quote_quality`, `sensitive_root`, `uncertain_root_path`,
+> `stored_sign_mismatch`, `search_budget`, `quality_budget`). Only
+> `gamma_flip_status == "available"` guarantees a number, so don't format the
+> level without checking - a replay loop will otherwise raise `TypeError` on the
+> first withheld minute. `Backtester.to_records` carries `gamma_flip_status`
+> through as its own column.
 
 ## API
 

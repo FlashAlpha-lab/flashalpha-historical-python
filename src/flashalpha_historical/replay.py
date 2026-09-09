@@ -347,6 +347,10 @@ class Backtester:
                 row["regime"] = snap["regime"] if isinstance(snap["regime"], str) else None
             if "gamma_flip" in snap:
                 row["gamma_flip"] = snap["gamma_flip"]
+            # Carry the reason code alongside the level -- ``gamma_flip`` is
+            # null for most chains, and this column says why.
+            if "gamma_flip_status" in snap:
+                row["gamma_flip_status"] = snap["gamma_flip_status"]
             if "exposures" in snap and isinstance(snap["exposures"], dict):
                 row["net_gex"] = snap["exposures"].get("net_gex")
                 row["net_dex"] = snap["exposures"].get("net_dex")

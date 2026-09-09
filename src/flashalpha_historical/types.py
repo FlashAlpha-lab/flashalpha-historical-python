@@ -124,6 +124,15 @@ class ExposureSummaryResponse(TypedDict, total=False):
     # NOT on /v1/exposure/summary. Don't add it to this type even if it would
     # be defensive — the field genuinely isn't returned for this endpoint.
     gamma_flip: Optional[float]
+    # Why ``gamma_flip`` is or isn't published. ``"available"`` when a
+    # level is returned; otherwise a reason code for the withholding:
+    # ``"no_boundary"``, ``"stored_sign_mismatch"``,
+    # ``"insufficient_local_coverage"``, ``"insufficient_quote_quality"``,
+    # ``"sensitive_root"``, ``"uncertain_root_path"``, ``"search_budget"``,
+    # ``"quality_budget"``. New codes may be added server-side, so treat
+    # ANY value other than ``"available"`` as "no flip published" -- in
+    # that case ``gamma_flip`` is ``None`` and ``regime`` is ``"unknown"``.
+    gamma_flip_status: Optional[str]
     # Confirmed live values in tests across Py/JS/.NET/Go/Java:
     #   positive_gamma | negative_gamma | unknown
     # ``unknown`` is returned when there's no usable options data.
@@ -271,6 +280,10 @@ class VrpRegime(TypedDict, total=False):
     # Net dealer gamma exposure in dollars per 1% spot move.
     net_gex: Optional[float]
     gamma_flip: Optional[float]
+    # Why ``gamma_flip`` is or isn't published -- ``"available"``, else a
+    # reason code. Same values as ``ExposureSummaryResponse.gamma_flip_status``;
+    # treat anything other than ``"available"`` as no flip published.
+    gamma_flip_status: Optional[str]
 
 
 class VrpStrategyScores(TypedDict, total=False):
@@ -465,6 +478,10 @@ class MaxPainDealerAlignment(TypedDict, total=False):
     # Strike where net dealer gamma crosses zero. Same definition as
     # ``exposure_summary.gamma_flip``.
     gamma_flip: Optional[float]
+    # Why ``gamma_flip`` is or isn't published -- ``"available"``, else a
+    # reason code. Same values as ``ExposureSummaryResponse.gamma_flip_status``;
+    # treat anything other than ``"available"`` as no flip published.
+    gamma_flip_status: Optional[str]
     # Strike with highest absolute call GEX (dealer-side resistance).
     call_wall: Optional[float]
     # Strike with highest absolute put GEX (dealer-side support).
@@ -713,6 +730,7 @@ class StockSummaryExposure(TypedDict, total=False):
     net_vex: Optional[float]
     net_chex: Optional[float]
     gamma_flip: Optional[float]
+    gamma_flip_status: Optional[str]
     call_wall: Optional[float]
     put_wall: Optional[float]
     max_pain: Optional[float]
@@ -873,6 +891,7 @@ class NarrativeData(TypedDict, total=False):
     net_gex_change_pct: Optional[float]
     vix: Optional[float]
     gamma_flip: Optional[float]
+    gamma_flip_status: Optional[str]
     call_wall: Optional[float]
     put_wall: Optional[float]
     # Dealer-positioning regime classification. ``"positive_gamma"`` |
@@ -934,6 +953,7 @@ class ExposureLevels(TypedDict, total=False):
     """The seven canonical dealer-flow levels for a symbol at ``as_of``."""
 
     gamma_flip: Optional[float]
+    gamma_flip_status: Optional[str]
     max_positive_gamma: Optional[float]
     max_negative_gamma: Optional[float]
     call_wall: Optional[float]
@@ -1396,6 +1416,7 @@ class GexResponse(TypedDict, total=False):
     # Snapped minute — read THIS, not your request ``at``.
     as_of: str
     gamma_flip: Optional[float]
+    gamma_flip_status: Optional[str]
     net_gex: Optional[float]
     # Plain-text categorical label (e.g. ``"long_gamma"``,
     # ``"short_gamma"``, ``"flat"``).
