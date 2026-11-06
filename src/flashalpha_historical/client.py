@@ -42,6 +42,7 @@ if TYPE_CHECKING:
         SurfaceResponse,
         VexResponse,
         VolatilityResponse,
+        SellWindowResponse,
         VrpResponse,
     )
 
@@ -405,3 +406,27 @@ class FlashAlphaHistorical:
         macro feed.
         """
         return self._get(f"/v1/vrp/{_seg(symbol)}", {"at": _format_at(at)})
+
+    # ── sell-window (own response shape) ────────────────────────────
+
+    def sell_window(self, symbol: str, *, at: AtLike) -> SellWindowResponse:
+        """Should you sell options today? One answer per session for SPY, QQQ and IWM.
+
+    Built from more than 5 million backtests. For four listed expiries (same day,
+    then the expiries closest to one week, two weeks and one month out) each
+    window says ``sell``, ``skip`` or ``unavailable``. On a sell it lists the
+    trades to place, with strikes, quotes and the exit rule. On a skip there is
+    nothing to do. Treat ``unavailable`` like a skip.
+
+    Replays the answer for any session since 2018, with strikes from the archive
+    chain at ``at``. The backtests entered at 09:35 ET, so
+    ``at="<session>T09:35:00"`` returns the backtest's entry strikes. The session
+    switches at the close: a date-only ``at`` reads 16:00 ET and returns the answer
+    for the next session. Any symbol other than SPY, QQQ or IWM returns every
+    window as ``unavailable``. Requires Alpha+.
+
+    Docs: https://flashalpha.com/docs/historical-sell-window
+    """
+        return self._get(
+            f"/v1/strategies/sell-window/{_seg(symbol)}", {"at": _format_at(at)}
+        )

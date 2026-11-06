@@ -185,3 +185,50 @@ def test_at_accepts_datetime_object():
     client = FlashAlphaHistorical("KEY")
     client.vrp("SPY", at=datetime(2025, 6, 18, 12, 0, 0))
     assert "at=2025-06-18T12%3A00%3A00" in responses.calls[0].request.url
+
+# ── sell-window ─────────────────────────────────────────────────────
+
+
+@responses.activate
+def test_sell_window_sends_at_and_returns_the_answer():
+    responses.get(
+        f"{BASE_URL}/v1/strategies/sell-window/SPY",
+        json={
+            "symbol": "SPY",
+            "session": "2026-10-16",
+            "spot": 772.255,
+            "quoted_at": "2026-10-16T13:35:00Z",
+            "legs_indicative": False,
+            "windows": [
+                {
+                    "expiry": "2026-10-23",
+                    "days_to_expiry": 7,
+                    "action": "sell",
+                    "candidates": [
+                        {
+                            "structure": "short_put",
+                            "exit": "expiry",
+                            "legs": [{"side": "sell", "quantity": 1, "type": "put", "strike": 754, "delta": -0.098, "bid": 0.69, "ask": 0.7}],
+                            "mid_credit": 0.695,
+                        }
+                    ],
+                },
+                {"action": "unavailable"},
+            ],
+        },
+        status=200,
+    )
+    answer = FlashAlphaHistorical("KEY").sell_window("SPY", at="2026-10-16T09:35:00")
+    assert answer["windows"][0]["candidates"][0]["mid_credit"] == 0.695
+    assert "at=2026-10-16T09%3A35%3A00" in responses.calls[0].request.url
+
+
+@responses.activate
+def test_sell_window_invalid_at_raises():
+    responses.get(
+        f"{BASE_URL}/v1/strategies/sell-window/SPY",
+        json={"error": "invalid_at", "message": "at is in the future."},
+        status=400,
+    )
+    with pytest.raises(InvalidAtError):
+        FlashAlphaHistorical("KEY").sell_window("SPY", at="2099-01-02T09:35:00")

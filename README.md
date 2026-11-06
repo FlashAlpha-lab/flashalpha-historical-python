@@ -36,6 +36,44 @@ print(snap["regime"], snap["exposures"]["net_gex"])
 The `at=` parameter accepts strings (`"2026-03-05T15:30:00"` or
 `"2026-03-05"` → defaults to 16:00 ET), `datetime` objects, or `date` objects.
 
+## sell-window replay: what did it say on any session since 2018?
+
+[sell-window](https://flashalpha.com/docs/lab-api-strategies-sell-window?utm_source=github&utm_medium=readme&utm_campaign=repo-flashalpha-historical-python&utm_content=sell-window) answers "should you sell options today?" every session for SPY, QQQ and IWM. Option sellers get wiped out on a few bad days. sell-window tells you which days to stay out, and on the days it says sell, it hands you the trades: which expiry, which strikes and how to exit. Every session, for SPY, QQQ and IWM. More than 5 million backtests led to this one endpoint.
+
+This package replays the answer for any past session, strikes included, so you can check the backtest yourself or test your own rules on the same calls.
+
+```python
+from flashalpha_historical import FlashAlphaHistorical
+
+hx = FlashAlphaHistorical("YOUR_API_KEY")
+answer = hx.sell_window("SPY", at="2026-10-16T09:35:00")
+
+for window in answer["windows"]:
+    print(window.get("expiry"), window["action"])  # sell, skip or unavailable
+    for trade in window.get("candidates", []):
+        print(" ", trade["structure"], trade.get("mid_credit"), trade["exit"])
+```
+
+The backtests entered at 09:35 ET, so `at=<session>T09:35:00` returns the backtest's entry strikes. The session switches at the close, so an `at` after the close, including a date-only `at` (read as 16:00 ET), returns the answer for the next session. An `at` before the archive starts returns every window as `unavailable`. A malformed or future `at` returns `400 invalid_at`.
+
+From the live launch on, the action and trades match what the live endpoint answered at that time. Before it they are rebuilt from the archive with the same rules.
+
+| Backtest, 2018 to 2026 | Following sell-window | Selling the same trades every day |
+|---|---|---|
+| Max drawdown at the same trade size | $255k | $959k |
+| Worst month at the same trade size | -$171k | -$307k |
+| Sharpe ratio | 0.76 | 0.61 |
+| Total P&L at the same max drawdown | $3.55M | $2.32M |
+| Worst day at the same max drawdown | -$258k | -$385k |
+
+Cut the risk or earn more. Keep your trade size and the deepest drawdown falls 73%. Or size up about 3.8 times, until the deepest drawdown matches, and you earn 53% more. These are two separate choices, not one result.
+
+**Plans:** Live answers need Basic or higher through November 2026, and Growth or higher from December 1, 2026. Backtesting any past session needs Alpha or higher. For live answers, use [flashalpha-python](https://github.com/FlashAlpha-lab/flashalpha-python).
+
+**Read more:** [API docs](https://flashalpha.com/docs/historical-sell-window?utm_source=github&utm_medium=readme&utm_campaign=repo-flashalpha-historical-python&utm_content=sell-window) | [trading guide](https://flashalpha.com/articles/complete-guide-trading-sell-window-spy-qqq-iwm?utm_source=github&utm_medium=readme&utm_campaign=repo-flashalpha-historical-python&utm_content=sell-window) | [every backtested trade](https://flashalpha.com/articles/sell-window-backtest-every-trade-2018-2026?utm_source=github&utm_medium=readme&utm_campaign=repo-flashalpha-historical-python&utm_content=sell-window) | [sell-window in depth](https://github.com/FlashAlpha-lab/flashalpha-historical-python/blob/main/docs/sell-window.md) | [plans](https://flashalpha.com/pricing?utm_source=github&utm_medium=readme&utm_campaign=repo-flashalpha-historical-python&utm_content=sell-window) | [live forward test on Discord](https://discord.gg/UtH22J8df2)
+
+*Backtest on SPY, QQQ and IWM, January 2018 to October 2026, at halfway fills and $1 per contract. At one contract set per signal, following it made $945,541 on 20,883 trades; selling every day made $2,321,150 on 56,975. At 3.76 times the contracts, both fell $958,924 at their deepest, and the worst month was -$642,135 against -$307,241. Past results do not guarantee future returns, and short options can lose more than the premium collected. The skip call applies to new trades, so it cannot protect open positions from a sudden shock. This is data, not investment advice.*
+
 ## Data provenance: `data_as_of`
 
 Every successful response carries `data_as_of`, reporting when each upstream feed last
@@ -198,6 +236,7 @@ Every analytics method takes a required `at` keyword argument.
 | `volatility(symbol, at=...)` | `/v1/volatility/{symbol}` |
 | `adv_volatility(symbol, at=...)` | `/v1/adv_volatility/{symbol}` |
 | `vrp(symbol, at=...)` | `/v1/vrp/{symbol}` |
+| `sell_window(symbol, at=...)` | `/v1/strategies/sell-window/{symbol}` |
 | `max_pain(symbol, at=..., expiration=)` | `/v1/maxpain/{symbol}` |
 
 ## Errors
