@@ -31,7 +31,7 @@ Runnable example: [`examples/sell_window_replay.py`](https://github.com/FlashAlp
 FLASHALPHA_API_KEY=... python examples/sell_window_replay.py SPY 2026-10-12 2026-10-16
 ```
 
-The backtests entered at 09:35 ET, so `at=<session>T09:35:00` returns the backtest's entry strikes. The session switches at the close, so an `at` after the close, including a date-only `at` (read as 16:00 ET), returns the answer for the next session. An `at` before the archive starts returns every window as `unavailable`. A malformed or future `at` returns `400 invalid_at`.
+The backtests entered at 09:35 ET, so `at=<session>T09:35:00` returns the backtest's entry strikes. The session switches at the close, so an `at` after the close, including a date-only `at` (read as 16:00 ET), returns the answer for the next session. An `at` before the archive starts returns every window as `unavailable`. An `at` before the open can return candidates without legs, because no chain is available yet. A malformed or future `at` returns `400 invalid_at`.
 
 From the live launch on, the action and trades match what the live endpoint answered at that time. Before it they are rebuilt from the archive with the same rules.
 
@@ -82,7 +82,7 @@ A sell day (one window and one trade shown):
 | Field | Meaning |
 |---|---|
 | `symbol`, `session` | The symbol and the trading session the answer applies to (`yyyy-MM-dd`). |
-| `spot`, `quoted_at`, `legs_indicative` | Present when a window sells. `legs_indicative: true` means the quotes are from before that session's 09:35 ET entry: call again at or after 09:35 ET for the strikes to trade. |
+| `spot`, `quoted_at`, `legs_indicative` | Present when a window sells and an option chain could be loaded. `legs_indicative: true` means the quotes are from before that session's 09:35 ET entry: call again at or after 09:35 ET for the strikes to trade. |
 | `windows[]` | Always four entries: the same-day expiry, then the expiries closest to one week, two weeks and one month out. |
 | `windows[].expiry`, `days_to_expiry` | The listed expiry this window trades. Absent when no listed expiry falls in the range. |
 | `windows[].action` | `sell`, `skip` or `unavailable`. Treat `unavailable` like a skip. |

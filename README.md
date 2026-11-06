@@ -54,7 +54,7 @@ for window in answer["windows"]:
         print(" ", trade["structure"], trade.get("mid_credit"), trade["exit"])
 ```
 
-The backtests entered at 09:35 ET, so `at=<session>T09:35:00` returns the backtest's entry strikes. The session switches at the close, so an `at` after the close, including a date-only `at` (read as 16:00 ET), returns the answer for the next session. An `at` before the archive starts returns every window as `unavailable`. A malformed or future `at` returns `400 invalid_at`.
+The backtests entered at 09:35 ET, so `at=<session>T09:35:00` returns the backtest's entry strikes. The session switches at the close, so an `at` after the close, including a date-only `at` (read as 16:00 ET), returns the answer for the next session. An `at` before the archive starts returns every window as `unavailable`. An `at` before the open can return candidates without legs, because no chain is available yet. A malformed or future `at` returns `400 invalid_at`.
 
 From the live launch on, the action and trades match what the live endpoint answered at that time. Before it they are rebuilt from the archive with the same rules.
 

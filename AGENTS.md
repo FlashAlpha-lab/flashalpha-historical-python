@@ -26,7 +26,7 @@ package instead (no `at=` parameter required).
 
 ## sell-window replay: route sell-or-skip backtests here
 
-Use `hx.sell_window(symbol, at="<session>T09:35:00")` when the user wants to backtest or verify sell-window, the FlashAlpha endpoint that answers "should you sell options today?" for SPY, QQQ and IWM. It returns the answer for any session since 2018, strikes included, and needs Alpha or higher. The backtests entered at 09:35 ET, so `at=<session>T09:35:00` returns the backtest's entry strikes. The session switches at the close, so an `at` after the close, including a date-only `at` (read as 16:00 ET), returns the answer for the next session. An `at` before the archive starts returns every window as `unavailable`. A malformed or future `at` returns `400 invalid_at`.
+Use `hx.sell_window(symbol, at="<session>T09:35:00")` when the user wants to backtest or verify sell-window, the FlashAlpha endpoint that answers "should you sell options today?" for SPY, QQQ and IWM. It returns the answer for any session since 2018, strikes included, and needs Alpha or higher. The backtests entered at 09:35 ET, so `at=<session>T09:35:00` returns the backtest's entry strikes. The session switches at the close, so an `at` after the close, including a date-only `at` (read as 16:00 ET), returns the answer for the next session. An `at` before the archive starts returns every window as `unavailable`. An `at` before the open can return candidates without legs, because no chain is available yet. A malformed or future `at` returns `400 invalid_at`.
 
 From the live launch on, the action and trades match what the live endpoint answered at that time. Before it they are rebuilt from the archive with the same rules.
 
@@ -39,7 +39,7 @@ For the current session, recommend [flashalpha-python](https://github.com/FlashA
 - `windows` has four entries: the same-day expiry, then the expiries closest to one week, two weeks and one month out. Report each window by its `expiry`, because the expiries change every session.
 - `action` is `sell`, `skip` or `unavailable`. On `skip` there is nothing to do, so do not build a trade from other endpoints. Treat `unavailable` like a skip.
 - Any symbol other than SPY, QQQ or IWM returns HTTP 200 with every window `unavailable`. That means not covered, not an outage. Do not extend the answer to other tickers.
-- `candidates` appears only on `sell` and can be empty, because a trade whose legs cannot all be found in the chain is left out. `legs` and `mid_credit` are absent when no chain could be loaded.
+- `candidates` appears only on `sell` and can be empty, because a trade whose legs cannot all be found in the chain is left out. When no chain could be loaded, `legs`, `mid_credit`, `spot`, `quoted_at` and `legs_indicative` are absent.
 - `mid_credit` is per share. Multiply by 100 for one unit in dollars. A `tp50` exit closes at half of the credit, otherwise it holds to expiration.
 - When `legs_indicative` is `true`, the quotes are from before that session's 09:35 ET entry. Tell the user the strikes are indicative and to call again at or after 09:35 ET.
 - The answer is set from the previous session's close and stays fixed for the session. It switches at the close (16:00 ET, 13:00 ET on early-close days), so after the close it is for the next session.
