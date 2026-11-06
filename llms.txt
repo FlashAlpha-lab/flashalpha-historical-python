@@ -70,6 +70,15 @@ nearest available minute.
   (Alpha+)
 - `GET /v1/maxpain/{symbol}?at=...` — max pain dashboard. (Basic+)
 
+## sell-window replay (Alpha+)
+
+`hx.sell_window(symbol, at="<session>T09:35:00")` calls `GET /v1/strategies/sell-window/{symbol}?at=...`. It replays the answer to "should you sell options today?" for SPY, QQQ and IWM on any session since 2018, with sell, skip or unavailable per listed expiry and the trades to place, strikes included. `at=<session>T09:35:00` returns the backtest's entry strikes. Own response shape (`SellWindowResponse`), not the strategy decision envelope. More than 5 million backtests led to this endpoint.
+
+- Reference: https://github.com/FlashAlpha-lab/flashalpha-historical-python/blob/main/docs/sell-window.md
+- API docs: https://flashalpha.com/docs/historical-sell-window
+- Backtest: https://flashalpha.com/articles/sell-window-backtest-every-trade-2018-2026
+- Trading guide: https://flashalpha.com/articles/complete-guide-trading-sell-window-spy-qqq-iwm
+
 ## Data provenance
 
 Every response carries two objects in the same shape. `archive_as_of` is the vintage of

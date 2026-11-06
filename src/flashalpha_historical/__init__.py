@@ -51,6 +51,10 @@ from .types import (
     ExposureSummaryResponse,
     ExposureSummaryZeroDte,
     VrpCore,
+    SellWindowCandidate,
+    SellWindowLeg,
+    SellWindowResponse,
+    SellWindowWindow,
     VrpDirectional,
     VrpGexConditioned,
     VrpMacro,
@@ -140,7 +144,7 @@ from .types import (
     ScreenerResponse,
 )
 
-__version__ = "0.4.0rc12"
+__version__ = "0.4.0rc14"
 __all__ = [
     "ArchiveAsOf",
     "DataAsOf",
@@ -172,6 +176,10 @@ __all__ = [
     "ExposureSummaryHedgingMove",
     "ExposureSummaryZeroDte",
     # ── VRP ──
+    "SellWindowResponse",
+    "SellWindowWindow",
+    "SellWindowCandidate",
+    "SellWindowLeg",
     "VrpResponse",
     "VrpCore",
     "VrpDirectional",
