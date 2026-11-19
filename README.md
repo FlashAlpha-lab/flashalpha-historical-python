@@ -196,6 +196,29 @@ for at, snap in replay(hx, "exposure_summary", "SPY",
 > first withheld minute. `Backtester.to_records` carries `gamma_flip_status`
 > through as its own column.
 
+### Expiry impact and strike dependency replay (SPY, QQQ)
+
+Replay either calculation at any minute with `at`. A date-only `at` uses 15:55 ET.
+Results are model reconstructions from archived quotes. Requires Alpha or higher.
+
+```python
+from flashalpha_historical import (
+    ExpiryImpactResponse,
+    FlashAlphaHistorical,
+    StrikeDependencyResponse,
+)
+
+hx = FlashAlphaHistorical("YOUR_API_KEY")
+at = "2026-10-09T15:55:00"
+
+impact: ExpiryImpactResponse = hx.expiry_impact("SPY", at=at, limit=5)
+print(impact["selected_expiry"], impact["impact"]["removed_gross_share_pct"])
+print(impact["impact"]["net_sign_changed"])
+
+dependency: StrikeDependencyResponse = hx.strike_dependency("SPY", at=at, strike=670)
+print(dependency["dominant_expiry"], dependency["dominant_expiry_share_pct"])
+```
+
 ## API
 
 Every analytics method takes a required `at` keyword argument.
@@ -227,6 +250,8 @@ Every analytics method takes a required `at` keyword argument.
 | `exposure_levels(symbol, at=...)` | `/v1/exposure/levels/{symbol}` |
 | `narrative(symbol, at=...)` | `/v1/exposure/narrative/{symbol}` |
 | `zero_dte(symbol, at=..., strike_range=)` | `/v1/exposure/zero-dte/{symbol}` |
+| `expiry_impact(symbol, at=..., expiry=, limit=)` | `/v1/exposure/expiry-impact/{symbol}` |
+| `strike_dependency(symbol, at=..., strike=...)` | `/v1/exposure/strike-dependency/{symbol}` |
 
 ### Composite & vol
 

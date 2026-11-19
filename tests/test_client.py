@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
+from decimal import Decimal
+from pathlib import Path
 
 import pytest
 import responses
@@ -10,15 +13,18 @@ import responses
 from flashalpha_historical import (
     BASE_URL,
     AuthenticationError,
+    ExpiryImpactResponse,
     FlashAlphaHistorical,
+    FlashAlphaHistoricalError,
     InsufficientDataError,
     InvalidAtError,
     NoCoverageError,
     NoDataError,
+    StrikeDependencyResponse,
     SymbolNotFoundError,
     TierRestrictedError,
 )
-from flashalpha_historical.client import _format_at
+from flashalpha_historical.client import _format_at, _format_number
 
 
 def test_format_at_string_passthrough():
@@ -232,3 +238,126 @@ def test_sell_window_invalid_at_raises():
     )
     with pytest.raises(InvalidAtError):
         FlashAlphaHistorical("KEY").sell_window("SPY", at="2099-01-02T09:35:00")
+
+
+# ── Expiry impact / strike dependency ───────────────────────────────
+#
+# Fixtures are real production responses captured 2026-11-19 (lists trimmed).
+
+FIXTURES = Path(__file__).parent / "fixtures"
+AT = "2026-10-09T15:55:00"
+AT_QS = "at=2026-10-09T15%3A55%3A00"
+
+
+def _fixture(name):
+    return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+
+
+@responses.activate
+def test_expiry_impact_sends_at_expiry_and_limit_and_returns_every_level():
+    responses.get(f"{BASE_URL}/v1/exposure/expiry-impact/SPY", json=_fixture("expiry_impact_historical.json"))
+
+    result: ExpiryImpactResponse = FlashAlphaHistorical("KEY").expiry_impact(
+        "SPY", at=AT, expiry="2026-10-09", limit=3
+    )
+
+    assert responses.calls[0].request.url == (
+        f"{BASE_URL}/v1/exposure/expiry-impact/SPY?{AT_QS}&expiry=2026-10-09&limit=3"
+    )
+    assert result["selected_expiry"] == "2026-10-09"
+    assert result["excluding_expiry"]["status"] == "available"
+    assert result["impact"]["removed_gross_share_pct"] == pytest.approx(27.355976302706107)
+    assert result["impact"]["largest_gross_reductions"][0]["strike"] == 778
+    assert result["impact"]["strongest_remaining_concentrations"][1]["excluded_share_at_strike_pct"] < 1
+    assert result["strikes"][2]["strike"] == 60
+    assert result["facts"][0]["supporting_values"]["gross_share_pct"] == pytest.approx(27.355976302706107)
+    assert result["reasons"][0]["code"] == "historical_model_reconstruction"
+    assert result["pricing_basis"] == "historical_quote_repriced_dated_inputs"
+    assert result["data_as_of"]["equity_feed"] is None
+    assert result["archive_as_of"]["node"] == "f3"
+    assert result["archive_as_of"]["oi_feed"] == "2026-10-08T20:00:00Z"
+
+
+@responses.activate
+def test_expiry_impact_omits_expiry_and_limit_when_not_given():
+    responses.get(f"{BASE_URL}/v1/exposure/expiry-impact/SPY", json=_fixture("expiry_impact_historical.json"))
+    FlashAlphaHistorical("KEY").expiry_impact("SPY", at=AT)
+    assert responses.calls[0].request.url == f"{BASE_URL}/v1/exposure/expiry-impact/SPY?{AT_QS}"
+
+
+@responses.activate
+def test_strike_dependency_sends_at_and_a_fractional_strike_exactly():
+    responses.get(f"{BASE_URL}/v1/exposure/strike-dependency/SPY", json=_fixture("strike_dependency_historical.json"))
+    FlashAlphaHistorical("KEY").strike_dependency("SPY", at=AT, strike=672.5)
+    assert responses.calls[0].request.url == (
+        f"{BASE_URL}/v1/exposure/strike-dependency/SPY?{AT_QS}&strike=672.5"
+    )
+
+
+@responses.activate
+def test_strike_dependency_returns_every_level():
+    responses.get(f"{BASE_URL}/v1/exposure/strike-dependency/SPY", json=_fixture("strike_dependency_historical.json"))
+
+    result: StrikeDependencyResponse = FlashAlphaHistorical("KEY").strike_dependency(
+        "SPY", at=datetime(2026, 10, 9, 15, 55), strike=670
+    )
+
+    assert responses.calls[0].request.url == (
+        f"{BASE_URL}/v1/exposure/strike-dependency/SPY?{AT_QS}&strike=670"
+    )
+    assert result["strike"] == 670
+    assert result["by_expiry"][0]["valuation_cutoff_at"] == "2026-10-13T20:00:00Z"
+    assert result["by_expiry"][0]["call_gex_usd"] == 0
+    assert result["by_expiry"][2]["calendar_days_to_expiry"] == 6
+    assert result["dominant_expiry"] == "2026-12-18"
+    assert result["dominant_expiry_share_pct"] == pytest.approx(29.844720445178503)
+    assert result["archive_as_of"]["node"] == "f3"
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        (672.5, "672.5"),
+        (670, "670"),
+        (670.0, "670.0"),
+        (0.0000001, "0.0000001"),
+        (1e16, "10000000000000000"),
+        (Decimal("672.50"), "672.50"),
+    ],
+)
+def test_strike_is_written_as_exact_decimal_text(value, expected):
+    assert _format_number(value) == expected
+
+
+@responses.activate
+def test_expiry_impact_below_alpha_raises_tier_restricted():
+    responses.get(
+        f"{BASE_URL}/v1/exposure/expiry-impact/SPY",
+        json={"error": "tier_restricted", "message": "Requires Alpha plan.", "current_plan": "Growth", "required_plan": "Alpha"},
+        status=403,
+    )
+    with pytest.raises(TierRestrictedError) as exc_info:
+        FlashAlphaHistorical("KEY").expiry_impact("SPY", at=AT)
+    assert exc_info.value.required_plan == "Alpha"
+
+
+@responses.activate
+def test_strike_dependency_below_alpha_raises_tier_restricted():
+    responses.get(
+        f"{BASE_URL}/v1/exposure/strike-dependency/SPY",
+        json={"error": "tier_restricted", "message": "Requires Alpha plan.", "current_plan": "Growth", "required_plan": "Alpha"},
+        status=403,
+    )
+    with pytest.raises(TierRestrictedError):
+        FlashAlphaHistorical("KEY").strike_dependency("SPY", at=AT, strike=670)
+
+
+@responses.activate
+def test_strike_dependency_unsupported_symbol_surfaces_the_422():
+    responses.get(
+        f"{BASE_URL}/v1/exposure/strike-dependency/AAPL", json=_fixture("error_unsupported_symbol.json"), status=422
+    )
+    with pytest.raises(FlashAlphaHistoricalError) as exc_info:
+        FlashAlphaHistorical("KEY").strike_dependency("AAPL", at=AT, strike=200)
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.response["error"] == "unsupported_symbol"

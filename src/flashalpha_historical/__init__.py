@@ -132,6 +132,16 @@ from .types import (
     VexResponse,
     ChexStrikeRow,
     ChexResponse,
+    # ── Expiry impact / strike dependency ──
+    GammaContextReason,
+    GammaContextMetadata,
+    GammaTotals,
+    GammaExpiryRow,
+    GammaStrikeImpact,
+    GammaRemovalImpact,
+    GammaContextFact,
+    ExpiryImpactResponse,
+    StrikeDependencyResponse,
     # ── Account / Reference / System ──
     AccountResponse,
     TickersResponse,
@@ -144,7 +154,7 @@ from .types import (
     ScreenerResponse,
 )
 
-__version__ = "0.4.0rc14"
+__version__ = "0.4.0rc15"
 __all__ = [
     "ArchiveAsOf",
     "DataAsOf",
@@ -259,6 +269,16 @@ __all__ = [
     "VexStrikeRow",
     "ChexResponse",
     "ChexStrikeRow",
+    # ── Expiry impact / strike dependency ──
+    "GammaContextReason",
+    "GammaContextMetadata",
+    "GammaTotals",
+    "GammaExpiryRow",
+    "GammaStrikeImpact",
+    "GammaRemovalImpact",
+    "GammaContextFact",
+    "ExpiryImpactResponse",
+    "StrikeDependencyResponse",
     # ── Account / Reference / System ──
     "AccountResponse",
     "TickersResponse",
