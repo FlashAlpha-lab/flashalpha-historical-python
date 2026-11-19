@@ -10,6 +10,7 @@ Base URL: ``https://historical.flashalpha.com``
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote
 
@@ -33,12 +34,14 @@ if TYPE_CHECKING:
         AdvVolatilityResponse,
         ChexResponse,
         DexResponse,
+        ExpiryImpactResponse,
         ExposureLevelsResponse,
         ExposureSummaryResponse,
         GexResponse,
         MaxPainResponse,
         NarrativeResponse,
         StockSummaryResponse,
+        StrikeDependencyResponse,
         SurfaceResponse,
         VexResponse,
         VolatilityResponse,
@@ -72,6 +75,14 @@ def _format_at(at: AtLike) -> str:
     if isinstance(at, date):
         return at.strftime("%Y-%m-%d")
     raise TypeError(f"`at` must be str, datetime, or date — got {type(at).__name__}")
+
+
+def _format_number(value: float | Decimal | str) -> str:
+    """Exact, locale-independent decimal text for a query value: 672.5 -> "672.5".
+
+    Never scientific notation (``str(1e-07)`` is ``"1e-07"``) and never rounded.
+    """
+    return format(Decimal(str(value)), "f")
 
 
 class FlashAlphaHistorical:
@@ -336,6 +347,61 @@ class FlashAlphaHistorical:
         if strike_range is not None:
             params["strike_range"] = strike_range
         return self._get(f"/v1/exposure/zero-dte/{_seg(symbol)}", params)
+
+    def expiry_impact(
+        self,
+        symbol: str,
+        *,
+        at: AtLike,
+        expiry: str | None = None,
+        limit: int | None = None,
+    ) -> ExpiryImpactResponse:
+        """Compares the current SPY or QQQ gamma distribution with the same captured
+        inputs after excluding one expiry.
+
+        Spot, Greeks and open interest are held fixed, so this measures how much
+        of today's concentration depends on one maturity. It is not a forecast of
+        post-expiry prices, dealer hedging or the next session's chain.
+
+        ``expiry`` (yyyy-MM-dd, optional) defaults to the nearest active eligible
+        expiry and must be one of ``available_expiries``. ``limit`` (1-20, default
+        5) sets the rows in ``impact.largest_gross_reductions`` and
+        ``impact.strongest_remaining_concentrations``; totals and ``strikes``
+        always use the full eligible chain.
+
+        Replays the same calculation at ``at`` on historical.flashalpha.com. A
+        date-only ``at`` uses 15:55 ET. Results are model reconstructions from
+        archived quotes; original publication and OI revision times are
+        unverified. Requires Alpha or higher. Other symbols return 422
+        ``unsupported_symbol``.
+        """
+        params: dict[str, Any] = {"at": _format_at(at)}
+        if expiry:
+            params["expiry"] = expiry
+        if limit is not None:
+            params["limit"] = limit
+        return self._get(f"/v1/exposure/expiry-impact/{_seg(symbol)}", params)
+
+    def strike_dependency(
+        self, symbol: str, *, at: AtLike, strike: float | Decimal
+    ) -> StrikeDependencyResponse:
+        """Attributes the gamma at one exact observed SPY or QQQ strike to its
+        expiries: does the level depend on a single maturity?
+
+        It reports concentration at that strike, not a support/resistance
+        probability. ``strike`` is required and must be an exact listed strike;
+        the request is never snapped to a nearby strike (404 ``strike_not_found``).
+
+        Replays the same calculation at ``at`` on historical.flashalpha.com. A
+        date-only ``at`` uses 15:55 ET. Results are model reconstructions from
+        archived quotes; original publication and OI revision times are
+        unverified. Requires Alpha or higher. Other symbols return 422
+        ``unsupported_symbol``.
+        """
+        return self._get(
+            f"/v1/exposure/strike-dependency/{_seg(symbol)}",
+            {"at": _format_at(at), "strike": _format_number(strike)},
+        )
 
     # ── Max Pain ────────────────────────────────────────────────────
 

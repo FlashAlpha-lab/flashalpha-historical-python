@@ -1,0 +1,127 @@
+{
+  "strike": 670,
+  "distance_from_spot_pct": -13.92655494247853,
+  "gross_gex_usd": 115634632.87571214,
+  "net_gex_usd": -95819046.48603098,
+  "call_gex_usd": 9907793.194840586,
+  "put_gex_usd": -105726839.68087156,
+  "contract_count": 60,
+  "by_expiry": [
+    {
+      "expiry": "2026-10-13",
+      "valuation_cutoff_at": "2026-10-13T20:00:00Z",
+      "last_trading_at": "2026-10-13T20:15:00Z",
+      "last_trading_status": "scheduled_regular_session",
+      "settlement_at": null,
+      "settlement_status": "unknown",
+      "calendar_days_to_expiry": 4,
+      "gross_share_pct": 0.0026251306222739787,
+      "share_of_strike_gross_pct": 0.0026251306222739787,
+      "gross_gex_usd": 3035.560157574413,
+      "net_gex_usd": -3035.560157574413,
+      "call_gex_usd": 0,
+      "put_gex_usd": -3035.560157574413,
+      "contract_count": 2
+    },
+    {
+      "expiry": "2026-10-14",
+      "valuation_cutoff_at": "2026-10-14T20:00:00Z",
+      "last_trading_at": "2026-10-14T20:15:00Z",
+      "last_trading_status": "scheduled_regular_session",
+      "settlement_at": null,
+      "settlement_status": "unknown",
+      "calendar_days_to_expiry": 5,
+      "gross_share_pct": 0.05464826069067519,
+      "share_of_strike_gross_pct": 0.05464826069067519,
+      "gross_gex_usd": 63192.31562262437,
+      "net_gex_usd": -63192.31562262437,
+      "call_gex_usd": 0,
+      "put_gex_usd": -63192.31562262437,
+      "contract_count": 2
+    },
+    {
+      "expiry": "2026-10-15",
+      "valuation_cutoff_at": "2026-10-15T20:00:00Z",
+      "last_trading_at": "2026-10-15T20:15:00Z",
+      "last_trading_status": "scheduled_regular_session",
+      "settlement_at": null,
+      "settlement_status": "unknown",
+      "calendar_days_to_expiry": 6,
+      "gross_share_pct": 0.4462196855682832,
+      "share_of_strike_gross_pct": 0.4462196855682832,
+      "gross_gex_usd": 515984.4952260413,
+      "net_gex_usd": -515984.4952260413,
+      "call_gex_usd": 0,
+      "put_gex_usd": -515984.4952260413,
+      "contract_count": 2
+    }
+  ],
+  "dominant_expiry": "2026-12-18",
+  "dominant_expiry_share_pct": 29.844720445178503,
+  "symbol": "SPY",
+  "underlying_price": 778.405,
+  "snapshot_id": "9850cd4be38b33b949b57c1907487349a879726d521bb805cd67e22bfd244aeb",
+  "generated_at": "2026-10-09T19:55:00Z",
+  "quote_at": "2026-10-09T19:55:00Z",
+  "greeks_oldest_at": "2026-10-09T19:55:00Z",
+  "greeks_newest_at": "2026-10-09T19:55:00Z",
+  "calculation_version": "gamma-context-v2",
+  "pricing_basis": "historical_quote_repriced_dated_inputs",
+  "data_status": "partial",
+  "reasons": [
+    {
+      "code": "historical_model_reconstruction",
+      "message": "Reconstructed from archived quotes at or before the requested ET time; original publication and OI revision times are unverified.",
+      "contract_count": null
+    },
+    {
+      "code": "expiry_clock_unverified",
+      "message": "Excluded 302 contract(s): expiry_clock_unverified.",
+      "contract_count": 302
+    },
+    {
+      "code": "gamma_unavailable",
+      "message": "Excluded 880 contract(s): gamma_unavailable.",
+      "contract_count": 880
+    },
+    {
+      "code": "oi_vintage_unknown",
+      "message": "The source does not carry a verified OI observation date; zero OI is a stored value, not evidence of a completed OI refresh.",
+      "contract_count": null
+    }
+  ],
+  "oi_as_of": null,
+  "oi_vintage_status": "unknown",
+  "eligible_contract_count": 12078,
+  "rejected_contract_count": 1182,
+  "observed_min_strike": 50,
+  "observed_max_strike": 1480,
+  "gex_unit": "usd_delta_notional_per_1pct_move",
+  "sign_convention": "calls_positive_puts_negative",
+  "analysis_type": "strike_attribution",
+  "endpoint_version": "2026.09.30",
+  "data_as_of": {
+    "node": "f3",
+    "equity_feed": null,
+    "equity_options_feed": null,
+    "index_feed": null,
+    "index_options_feed": null,
+    "futures_feed": null,
+    "futures_options_feed": null,
+    "flow_feed": null,
+    "oi_feed": null,
+    "macro_feed": null
+  },
+  "archive_as_of": {
+    "node": "f3",
+    "equity_feed": "2026-10-09T19:55:00Z",
+    "equity_options_feed": "2026-10-09T19:55:00Z",
+    "index_feed": null,
+    "index_options_feed": null,
+    "futures_feed": null,
+    "futures_options_feed": null,
+    "flow_feed": null,
+    "oi_feed": "2026-10-08T20:00:00Z",
+    "macro_feed": null
+  }
+}

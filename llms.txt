@@ -69,6 +69,8 @@ nearest available minute.
 - `GET /v1/vrp/{symbol}?at=...` — Variance Risk Premium dashboard.
   (Alpha+)
 - `GET /v1/maxpain/{symbol}?at=...` — max pain dashboard. (Basic+)
+- `GET /v1/exposure/expiry-impact/{symbol}?at=...` - Compares the current SPY or QQQ gamma distribution with the same captured inputs after excluding one expiry. Requires Alpha or higher.
+- `GET /v1/exposure/strike-dependency/{symbol}?at=...&strike=...` - Attributes the gamma at one exact observed SPY or QQQ strike to its expiries: does the level depend on a single maturity? Requires Alpha or higher.
 
 ## sell-window replay (Alpha+)
 
